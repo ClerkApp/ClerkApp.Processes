@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Clerk.Processes.DbCleanup",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Clerk.Processes.Common", "Clerk.Processes.Common\Clerk.Processes.Common.csproj", "{8DE21457-DA3C-4B4B-8888-7122469B5B01}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Clerk.Processes.WebExtractorToJson", "Clerk.Processes.WebExtractorToJson\Clerk.Processes.WebExtractorToJson.csproj", "{E13BFA6C-1951-4B21-BAE7-0ECD07D20C24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{8DE21457-DA3C-4B4B-8888-7122469B5B01}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8DE21457-DA3C-4B4B-8888-7122469B5B01}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8DE21457-DA3C-4B4B-8888-7122469B5B01}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E13BFA6C-1951-4B21-BAE7-0ECD07D20C24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E13BFA6C-1951-4B21-BAE7-0ECD07D20C24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E13BFA6C-1951-4B21-BAE7-0ECD07D20C24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E13BFA6C-1951-4B21-BAE7-0ECD07D20C24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
