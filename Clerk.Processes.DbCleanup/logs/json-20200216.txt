@@ -1,0 +1,2 @@
+{"Timestamp":"2020-02-16T21:09:41.9605181+02:00","Level":"Information","MessageTemplate":"Initialized RavenDB document store at {0}","RenderedMessage":"Initialized RavenDB document store at \"http://localhost:8080/\"","Properties":{"0":"http://localhost:8080/"}}
+{"Timestamp":"2020-02-16T21:09:43.6985935+02:00","Level":"Information","MessageTemplate":"Succesfully cleaned database: {0}.","RenderedMessage":"Succesfully cleaned database: \"People\".","Properties":{"0":"People"}}

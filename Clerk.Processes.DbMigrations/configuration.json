@@ -1,0 +1,10 @@
+[
+  {
+    "Destinations": [
+      {
+        "Url": "http://localhost:32769/",
+        "Database": "People"
+      }
+    ]
+  }
+]

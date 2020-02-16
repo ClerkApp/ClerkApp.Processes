@@ -1,0 +1,16 @@
+[
+    {
+        "Endpoint": "http://localhost:8080/",
+        "ToPopulate": [
+            {
+                "Database": "People"
+            }
+        ],
+        "ToDelete": [
+            {
+                "Database": "People",
+                "Collection": "ALL"
+            }
+        ]
+    }
+]

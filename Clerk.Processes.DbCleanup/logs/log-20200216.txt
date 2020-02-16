@@ -1,0 +1,2 @@
+2020-02-16 21:09:41.960 +02:00 [INF] Initialized RavenDB document store at http://localhost:8080/
+2020-02-16 21:09:43.698 +02:00 [INF] Succesfully cleaned database: People.
