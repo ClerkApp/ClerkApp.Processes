@@ -1,3 +1,4 @@
+[![Board Status](https://dev.azure.com/loghinlalexandru/6ef14a6f-d0fb-4681-aabf-dd3c847e9c2b/ee797f0e-abce-4081-922a-fda1d63555bc/_apis/work/boardbadge/239ddd18-9938-4a37-8fcc-90e806991e3c)](https://dev.azure.com/loghinlalexandru/6ef14a6f-d0fb-4681-aabf-dd3c847e9c2b/_boards/board/t/ee797f0e-abce-4081-922a-fda1d63555bc/Microsoft.RequirementCategory)
 # Introduction 
 TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
 
