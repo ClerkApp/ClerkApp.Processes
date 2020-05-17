@@ -4,50 +4,90 @@ using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using Bot.Storage.Elasticsearch;
 using Clerk.Processes.WebExtractorToJson.Model.GSMArena;
+using Clerk.Processes.WebExtractorToJson.Model.MobilePhone;
+using Elasticsearch.Net;
 using HtmlAgilityPack;
+using Nest;
+using Nest.JsonNetSerializer;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Clerk.Processes.WebExtractorToJson
 {
-    class Program
+    internal class Program
     {
         private static string brandName = string.Empty;
         private static string phoneName = string.Empty;
+        private static ElasticClient elasticClient;
+        private static ElasticsearchStorageOptions elasticOptions;
+        private static readonly JsonSerializer JsonSerializer = new JsonSerializer { Formatting = Formatting.Indented };
 
         public static void Main(string[] args)
         {
+            elasticOptions = new ElasticsearchStorageOptions
+            {
+                ElasticsearchEndpoint = new Uri(@"http://localhost:9200"),
+                IndexName = "electronics_phones",
+                IndexMappingDepthLimit = 10000
+            };
+
+            var connectionPool = new SingleNodeConnectionPool(elasticOptions.ElasticsearchEndpoint);
+            var connectionSettings = new ConnectionSettings(connectionPool, sourceSerializer: JsonNetSerializer.Default);
+
+            if (!string.IsNullOrEmpty(elasticOptions.UserName) && !string.IsNullOrEmpty(elasticOptions.Password))
+            {
+                connectionSettings = connectionSettings.BasicAuthentication(elasticOptions.UserName, elasticOptions.Password);
+            }
+
+            elasticClient = new ElasticClient(connectionSettings);
+
             // like this www.gsmarena.com/oneplus-phones-f-95
-            ExtractPhones("https://www.gsmarena.com/oneplus-phones-f-95");
+            ExtractPhones("https://www.gsmarena.com/samsung-phones-f-9");
             //ExtractPhoneInfo("https://www.gsmarena.com/oneplus_7t-9816.php", 1);
+            //ExtractAllPhones();
             Console.ReadKey();
         }
 
         public static void ExtractAllPhones()
         {
             var brandCounter = 1;
-            var brandsUrl = $"https://www.gsmarena.com/makers.php3";
-            var web = new HtmlWeb();
-            var doc = web.Load(Uri.EscapeUriString(brandsUrl));
-            var table = doc.DocumentNode?.SelectNodes("//table");
-            var phonesListNode = doc.DocumentNode?.SelectNodes("//td").Descendants("a")
-                .Select(n => n.Attributes["href"].Value).ToList();
 
-            foreach (var phonesNode in phonesListNode)
+            while (brandCounter <= 30)
             {
-                try
-                {
-                    var phoneKeyWords = phonesNode.Split('-');
+                var brandsUrl = $"https://www.gsmarena.com/makers.php3";
+                var web = new HtmlWeb();
+                var doc = web.Load(Uri.EscapeUriString(brandsUrl));
+                var table = doc.DocumentNode?.SelectNodes("//table");
 
-                    Console.WriteLine($"-- {brandCounter} -- {phoneKeyWords[0].ToUpper()} ------");
-                    brandCounter++;
-
-                    var urlBuilder = $"https://www.gsmarena.com/{phoneKeyWords[0]}-{phoneKeyWords[1]}-f-{phoneKeyWords[2].Split('.')[0]}";
-                    ExtractPhones(urlBuilder);
-                }
-                catch (Exception e)
+                if (table != null)
                 {
-                    SaveExToFile(e);
+                    var phonesListNode = doc.DocumentNode?.SelectNodes("//td").Descendants("a")
+                        .Select(n => n.Attributes["href"].Value).ToList();
+
+                    foreach (var phonesNode in phonesListNode)
+                    {
+                        try
+                        {
+                            var phoneKeyWords = phonesNode.Split('-');
+
+                            if (brandCounter.Equals("Acer"))
+                            {
+                                continue;
+                            }
+
+                            Console.WriteLine($"-- {brandCounter} -- {phoneKeyWords[0].ToUpper()} ------");
+                            brandCounter++;
+
+                            var urlBuilder = $"https://www.gsmarena.com/{phoneKeyWords[0]}-{phoneKeyWords[1]}-f-{phoneKeyWords[2].Split('.')[0]}";
+                            ExtractPhones(urlBuilder);
+                        }
+                        catch (Exception e)
+                        {
+                            SaveExToFile(e);
+                        }
+                    }
                 }
             }
         }
@@ -58,26 +98,31 @@ namespace Clerk.Processes.WebExtractorToJson
             var numberPhone = 0;
             while (true)
             {
+                Console.WriteLine($"----------------- Page no: {pageNo}");
                 var phonesUrl = $"{urlLink}-0-p{pageNo++}.php";
                 var web = new HtmlWeb();
                 var doc = web.Load(Uri.EscapeUriString(phonesUrl));
                 brandName = doc.DocumentNode?.SelectNodes("//h1[@class='article-info-name']")
                     .Select(n => n.InnerHtml).ToList().First().Split(' ')[0];
-                var phonesListNode = doc.DocumentNode?.SelectNodes("//div[@class='makers']/ul").Descendants("li")
-                    .Select(n => n.LastChild.Attributes["href"].Value).ToList();
 
-                if (phonesListNode.Count.Equals(0)) break;
-
-                if (!Directory.Exists($"C:\\Licenta\\extracted\\{brandName}"))
+                if (brandName != null && !string.IsNullOrWhiteSpace(brandName))
                 {
-                    Directory.CreateDirectory($"C:\\Licenta\\extracted\\{brandName}");
-                }
+                    var phonesListNode = doc.DocumentNode?.SelectNodes("//div[@class='makers']/ul").Descendants("li")
+                        .Select(n => n.LastChild.Attributes["href"].Value).ToList();
 
-                foreach (var phoneNode in phonesListNode)
-                {
-                    var phoneUrl = $"https://www.gsmarena.com/{phoneNode}";
-                    numberPhone++;
-                    ExtractPhoneInfo(phoneUrl, numberPhone);
+                    if (phonesListNode.Count.Equals(0)) break;
+
+                    if (!Directory.Exists($"C:\\Licenta\\extracted\\{brandName}"))
+                    {
+                        Directory.CreateDirectory($"C:\\Licenta\\extracted\\{brandName}");
+                    }
+
+                    foreach (var phoneNode in phonesListNode)
+                    {
+                        var phoneUrl = $"https://www.gsmarena.com/{phoneNode}";
+                        numberPhone++;
+                        ExtractPhoneInfo(phoneUrl, numberPhone);
+                    }
                 }
             }
         }
@@ -88,69 +133,100 @@ namespace Clerk.Processes.WebExtractorToJson
             var doc = web.Load(Uri.EscapeUriString(url));
             phoneName = doc.DocumentNode?.SelectNodes("//h1[@data-spec='modelname']")
                 .Select(n => n.InnerHtml).ToList().First().Split('/')[0];
-            var filePath = $"C:\\Licenta\\extracted\\{brandName}\\{phoneName}.json";
 
-            var phoneStatus = doc.DocumentNode?.SelectNodes("//td[@data-spec='status']")
-                .Select(n => n.InnerHtml).ToList().First().Split(' ')[0];
+            var phoneImage = doc.DocumentNode?.SelectNodes("//div[contains(@class, 'specs-photo-main')]//img")
+                .First().Attributes.First(x => x.Name.Equals("src")).Value;
 
-            if (phoneStatus.Contains("Discontinued"))
+            if (phoneName != null && !string.IsNullOrWhiteSpace(phoneName))
             {
-                return;
-            }
 
-            var bodyNode = doc.DocumentNode?.SelectNodes("//table[@cellspacing]");
-            dynamic expando = new ExpandoObject();
+                var filePath = $"C:\\Licenta\\extracted\\{brandName}\\{phoneName}.json";
 
-            var title = "Name";
-            var left = new List<string>() { "Main" };
-            var right2 = new List<HtmlNodeCollection>()
+                var phoneStatus = doc.DocumentNode?.SelectNodes("//td[@data-spec='status']")
+                    .Select(n => n.InnerHtml).ToList().First().Split(' ')[0];
+
+                if (phoneStatus.Contains("Discontinued"))
+                {
+                    return;
+                }
+
+                if (phoneName.Contains("Watch"))
+                {
+                    return;
+                }
+
+                var bodyNode = doc.DocumentNode?.SelectNodes("//table[@cellspacing]");
+                dynamic expando = new ExpandoObject();
+
+                var expandoFull = expando as IDictionary<string, object>;
+                expandoFull.Add("Photo", phoneImage);
+
+                var title = "Name";
+                var left = new List<string>() { "Main" };
+                var right2 = new List<HtmlNodeCollection>()
                              {
                                  doc.DocumentNode?.SelectNodes("//h1[@data-spec='modelname']")
                              };
 
-            if (doc.DocumentNode?.SelectNodes("//p[@data-spec='comment']") != null)
-            {
-                left.Add("Others");
-                var othersName = doc.DocumentNode?.SelectNodes("//p[@data-spec='comment']")
-                    .Select(m => m.LastChild.ParentNode.ChildNodes).ToList();
-                right2.AddRange(othersName);
+                if (doc.DocumentNode?.SelectNodes("//p[@data-spec='comment']") != null)
+                {
+                    left.Add("Others");
+                    var othersName = doc.DocumentNode?.SelectNodes("//p[@data-spec='comment']")
+                        .Select(m => m.LastChild.ParentNode.ChildNodes).ToList();
+                    right2.AddRange(othersName);
+                }
+
+                AddProperty(expando, left, right2, title);
+
+                foreach (var node in bodyNode)
+                {
+                    title = node.Descendants(0).Where(n => n.Name.Equals("th")).Select(m => m.LastChild.InnerHtml)
+                        .First();
+                    left = node.Descendants(0)
+                        .Where(n => (n.HasClass("ttl") && n.HasChildNodes.Equals(true)))
+                        .Select(m => m.FirstChild.InnerHtml)
+                        .ToList();
+                    var right = node.Descendants(0)
+                        .Where(n => (n.HasClass("nfo") && n.HasChildNodes.Equals(true)))
+                        .Select(m => m.LastChild.ParentNode.ChildNodes)
+                        .ToList();
+
+                    AddProperty(expando, left, right, title);
+                }
+
+                var test = ConvertToMongo(expando);
+
+                using (var file = File.CreateText(filePath))
+                {
+                    JsonSerializer.Serialize(file, test);
+                }
+
+                Console.WriteLine($"{numberPhone}. {phoneName}");
             }
-
-            AddProperty(expando, left, right2, title);
-
-            foreach (var node in bodyNode)
-            {
-                title = node.Descendants(0).Where(n => n.Name.Equals("th")).Select(m => m.LastChild.InnerHtml)
-                    .First();
-                left = node.Descendants(0)
-                    .Where(n => (n.HasClass("ttl") && n.HasChildNodes.Equals(true)))
-                    .Select(m => m.FirstChild.InnerHtml)
-                    .ToList();
-                var right = node.Descendants(0)
-                    .Where(n => (n.HasClass("nfo") && n.HasChildNodes.Equals(true)))
-                    .Select(m => m.LastChild.ParentNode.ChildNodes)
-                    .ToList();
-
-                AddProperty(expando, left, right, title);
-            }
-
-            var test = ConvertToMongo(expando);
-
-            using (var file = File.CreateText(filePath))
-            {
-                var serializer = new JsonSerializer { Formatting = Formatting.Indented };
-                serializer.Serialize(file, test);
-            }
-
-            Console.WriteLine($"{numberPhone}. {phoneName}");
         }
 
-        public static ExpandoObject ConvertToMongo(ExpandoObject expando)
+        public static object ConvertToMongo(ExpandoObject expando)
         {
             var outputJson = JsonConvert.SerializeObject(expando);
             var gsmArena = JsonConvert.DeserializeObject<GsmArenaModel>(outputJson);
 
-            return expando;
+            if (gsmArena.Network.Technology.First().Contains("no", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return expando;
+            }
+
+            var phoneElastic = new PhoneElastic(gsmArena);
+
+            var documentItem = new DocumentItem
+            {
+                Id = phoneName.BuildGuid().ToString(),
+                Document = JObject.FromObject(phoneElastic, JsonSerializer),
+                Timestamp = DateTime.Now.ToUniversalTime()
+            };
+
+            elasticClient.IndexAsync(documentItem, i => i.Index(elasticOptions.IndexName).Refresh(Refresh.True));
+
+            return JsonConvert.SerializeObject(phoneElastic);
         }
 
         public static void AddProperty(ExpandoObject expando, string propertyName, object propertyValue)

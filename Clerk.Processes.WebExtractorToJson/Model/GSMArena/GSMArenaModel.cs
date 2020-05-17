@@ -6,288 +6,288 @@
 //
 //    var gsmArenaModel = GsmArenaModel.FromJson(jsonString);
 
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace Clerk.Processes.WebExtractorToJson.Model.GSMArena
 {
-    public partial class GsmArenaModel
+    public class GsmArenaModel
     {
+        [JsonProperty("Photo")]
+        public Uri Photo { get; set; }
+
         [JsonProperty("Name")]
-        public Name Name { get; set; }
+        public NameJson Name { get; set; }
 
         [JsonProperty("Network")]
-        public Network Network { get; set; }
+        public NetworkJson Network { get; set; }
 
         [JsonProperty("Launch")]
-        public Launch Launch { get; set; }
+        public LaunchJson Launch { get; set; }
 
         [JsonProperty("Body")]
-        public Body Body { get; set; }
+        public BodyJson Body { get; set; }
 
         [JsonProperty("Display")]
-        public Display Display { get; set; }
+        public DisplayJson Display { get; set; }
 
         [JsonProperty("Platform")]
-        public Platform Platform { get; set; }
+        public PlatformJson Platform { get; set; }
 
         [JsonProperty("Memory")]
-        public Memory Memory { get; set; }
+        public MemoryJson Memory { get; set; }
 
         [JsonProperty("Main Camera")]
-        public MainCamera MainCamera { get; set; }
+        public MainCameraJson MainCamera { get; set; }
 
         [JsonProperty("Selfie camera")]
-        public SelfieCamera SelfieCamera { get; set; }
+        public SelfieCameraJson SelfieCamera { get; set; }
 
         [JsonProperty("Sound")]
-        public Sound Sound { get; set; }
+        public SoundJson Sound { get; set; }
 
         [JsonProperty("Comms")]
-        public Comms Comms { get; set; }
+        public CommsJson Comms { get; set; }
 
         [JsonProperty("Features")]
-        public Features Features { get; set; }
+        public FeaturesJson Features { get; set; }
 
         [JsonProperty("Battery")]
-        public Battery Battery { get; set; }
+        public BatteryJson Battery { get; set; }
 
         [JsonProperty("Misc")]
-        public Misc Misc { get; set; }
+        public MiscJson Misc { get; set; }
 
         [JsonProperty("Tests")]
-        public Tests Tests { get; set; }
+        public TestsJson Tests { get; set; }
     }
 
-    public partial class Battery
+    public class BatteryJson
     {
         [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        public string[] Orphans { get; set; }
 
         [JsonProperty("Charging")]
-        public List<string> Charging { get; set; }
+        public string[] Charging { get; set; }
     }
 
-    public partial class Body
+    public class BodyJson
     {
+        [JsonProperty("Orphans")]
+        public string[] Orphans { get; set; }
+
         [JsonProperty("Dimensions")]
-        public List<string> Dimensions { get; set; }
+        public string[] Dimensions { get; set; }
 
         [JsonProperty("Weight")]
-        public List<string> Weight { get; set; }
+        public string[] Weight { get; set; }
 
         [JsonProperty("Build")]
-        public List<string> Build { get; set; }
+        public string[] Build { get; set; }
 
         [JsonProperty("SIM")]
-        public List<string> Sim { get; set; }
-
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        public string[] Sim { get; set; }
     }
 
-    public partial class Comms
+    public class CommsJson
     {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
-
         [JsonProperty("WLAN")]
-        public List<string> Wlan { get; set; }
+        public string[] Wlan { get; set; }
 
         [JsonProperty("Bluetooth")]
-        public List<string> Bluetooth { get; set; }
+        public string[] Bluetooth { get; set; }
 
         [JsonProperty("GPS")]
-        public List<string> Gps { get; set; }
+        public string[] Gps { get; set; }
 
         [JsonProperty("NFC")]
-        public List<string> Nfc { get; set; }
+        public string[] Nfc { get; set; }
 
         [JsonProperty("Radio")]
-        public List<string> Radio { get; set; }
+        public string[] Radio { get; set; }
 
         [JsonProperty("USB")]
-        public List<string> Usb { get; set; }
+        public string[] Usb { get; set; }
     }
 
-    public partial class Display
+    public class DisplayJson
     {
         [JsonProperty("Type")]
-        public List<string> Type { get; set; }
+        public string[] Type { get; set; }
 
         [JsonProperty("Size")]
-        public List<string> Size { get; set; }
-
-        [JsonProperty("Resolution")]
-        public List<string> Resolution { get; set; }
+        public string[] Size { get; set; }
 
         [JsonProperty("Protection")]
-        public List<string> Protection { get; set; }
+        public string[] Protection { get; set; }
+
+        [JsonProperty("Resolution")]
+        public string[] Resolution { get; set; }
 
         [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        public string[] Orphans { get; set; }
     }
 
-    public partial class Features
+    public class FeaturesJson
     {
         [JsonProperty("Sensors")]
-        public List<string> Sensors { get; set; }
-
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        public string[] Sensors { get; set; }
     }
 
-    public partial class Launch
+    public class LaunchJson
     {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
-
         [JsonProperty("Announced")]
-        public List<string> Announced { get; set; }
+        public string[] Announced { get; set; }
 
         [JsonProperty("Status")]
-        public List<string> Status { get; set; }
+        public string[] Status { get; set; }
     }
 
-    public partial class MainCamera
+    public class MainCameraJson
     {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        public string[] Cameras { get; set; }
 
-        [JsonProperty("Triple")]
-        public List<string> Triple { get; set; }
-
-        [JsonProperty("Features")]
-        public List<string> Features { get; set; }
-
-        [JsonProperty("Video")]
-        public List<string> Video { get; set; }
-    }
-
-    public partial class Memory
-    {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
-
-        [JsonProperty("Card slot")]
-        public List<string> CardSlot { get; set; }
-
-        [JsonProperty("Internal")]
-        public List<string> Internal { get; set; }
-    }
-
-    public partial class Misc
-    {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
-
-        [JsonProperty("Colors")]
-        public List<string> Colors { get; set; }
-
-        [JsonProperty("Models")]
-        public List<string> Models { get; set; }
-
-        [JsonProperty("SAR")]
-        public List<string> Sar { get; set; }
-
-        [JsonProperty("SAR EU")]
-        public List<string> SarEu { get; set; }
-
-        [JsonProperty("Price")]
-        public List<string> Price { get; set; }
-    }
-
-    public partial class Name
-    {
-        [JsonProperty("Main")]
-        public List<string> Main { get; set; }
-
-        [JsonProperty("Others")]
-        public List<string> Others { get; set; }
-
-    }
-
-    public partial class Network
-    {
-        [JsonProperty("Technology")]
-        public List<string> Technology { get; set; }
-
-        [JsonProperty("2G bands")]
-        public List<string> B2GBands { get; set; }
-
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
-
-        [JsonProperty("3G bands")]
-        public List<string> B3GBands { get; set; }
-
-        [JsonProperty("4G bands")]
-        public List<string> B4GBands { get; set; }
-
-        [JsonProperty("Speed")]
-        public List<string> Speed { get; set; }
-    }
-
-    public partial class Platform
-    {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
-
-        [JsonProperty("OS")]
-        public List<string> Os { get; set; }
-
-        [JsonProperty("Chipset")]
-        public List<string> Chipset { get; set; }
-
-        [JsonProperty("CPU")]
-        public List<string> Cpu { get; set; }
-
-        [JsonProperty("GPU")]
-        public List<string> Gpu { get; set; }
-    }
-
-    public partial class SelfieCamera
-    {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        [JsonProperty("Single")]
+        private string[] SingleCamera { set => Cameras = value; }
 
         [JsonProperty("Dual")]
-        public List<string> Dual { get; set; }
+        private string[] DualCamera { set => Cameras = value; }
+
+        [JsonProperty("Triple")]
+        private string[] TripleCamera { set => Cameras = value; }
+
+        [JsonProperty("Quad")]
+        private string[] QuadCamera { set => Cameras = value; }
 
         [JsonProperty("Features")]
-        public List<string> Features { get; set; }
+        public string[] Features { get; set; }
 
         [JsonProperty("Video")]
-        public List<string> Video { get; set; }
+        public string[] Video { get; set; }
     }
 
-    public partial class Sound
+    public class MemoryJson
     {
-        [JsonProperty("Loudspeaker")]
-        public List<string> Loudspeaker { get; set; }
+        [JsonProperty("Card slot")]
+        public string[] CardSlot { get; set; }
 
-        [JsonProperty("3.5mm jack")]
-        public List<string> The35MmJack { get; set; }
+        [JsonProperty("Internal")]
+        public string[] Internal { get; set; }
 
         [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        public string[] Orphans { get; set; }
     }
 
-    public partial class Tests
+    public class MiscJson
     {
-        [JsonProperty("Orphans")]
-        public List<string> Orphans { get; set; }
+        [JsonProperty("Colors")]
+        public string[] Colors { get; set; }
 
+        [JsonProperty("Price")]
+        public string[] Price { get; set; }
+    }
+
+    public class TestsJson
+    {
         [JsonProperty("Performance")]
-        public List<string> Performance { get; set; }
+        public string[] Performance { get; set; }
 
         [JsonProperty("Display")]
-        public List<string> Display { get; set; }
+        public string[] Display { get; set; }
 
         [JsonProperty("Loudspeaker")]
-        public List<string> Loudspeaker { get; set; }
+        public string[] Loudspeaker { get; set; }
 
         [JsonProperty("Audio quality")]
-        public List<string> AudioQuality { get; set; }
+        public string[] AudioQuality { get; set; }
+    }
+
+    public class NameJson
+    {
+        [JsonProperty("Main")]
+        public string[] Main { get; set; }
+    }
+
+    public class NetworkJson
+    {
+        public NetworkJson()
+        {
+            Bands = new Dictionary<string, string[]>();
+        }
+
+
+        [JsonProperty("Technology")]
+        public string[] Technology { get; set; }
+
+        public Dictionary<string, string[]> Bands { get; set; }
+
+        [JsonProperty("2G bands")]
+        private string[] The2GBands { set => Bands.Add("2G", value); }
+
+        [JsonProperty("3G bands")]
+        public string[] The3GBands { set => Bands.Add("3G", value); }
+
+        [JsonProperty("4G bands")]
+        public string[] The4GBands { set => Bands.Add("4G", value); }
+
+        [JsonProperty("5G bands")]
+        public string[] The5GBands { set => Bands.Add("5G", value); }
+
+        [JsonProperty("Orphans")]
+        public string[] Orphans { get; set; }
+
+        [JsonProperty("Speed")]
+        public string[] Speed { get; set; }
+    }
+
+    public class PlatformJson
+    {
+        [JsonProperty("OS")]
+        public string[] Os { get; set; }
+
+        [JsonProperty("Chipset")]
+        public string[] Chipset { get; set; }
+
+        [JsonProperty("CPU")]
+        public string[] Cpu { get; set; }
+
+        [JsonProperty("GPU")]
+        public string[] Gpu { get; set; }
+    }
+
+    public class SelfieCameraJson
+    {
+        public string[] Cameras { get; set; }
+
+        [JsonProperty("Single")]
+        private string[] SingleCamera { set => Cameras = value; }
+
+        [JsonProperty("Dual")]
+        private string[] DualCamera { set => Cameras = value; }
+
+        [JsonProperty("Triple")]
+        private string[] TripleCamera { set => Cameras = value; }
+
+        [JsonProperty("Quad")]
+        private string[] QuadCamera { set => Cameras = value; }
+
+        [JsonProperty("Features")]
+        public string[] Features { get; set; }
+
+        [JsonProperty("Video")]
+        public string[] Video { get; set; }
+    }
+
+    public class SoundJson
+    {
+        [JsonProperty("Loudspeaker")]
+        public string[] Loudspeaker { get; set; }
+
+        [JsonProperty("3.5mm jack")]
+        public string[] The35MmJack { get; set; }
+
+        [JsonProperty("Orphans")]
+        public string[] Orphans { get; set; }
     }
 }

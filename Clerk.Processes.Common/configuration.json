@@ -1,16 +1,20 @@
 [
-    {
-        "Endpoint": "http://localhost:8080/",
-        "ToPopulate": [
-            {
-                "Database": "People"
-            }
-        ],
-        "ToDelete": [
-            {
-                "Database": "People",
-                "Collection": "ALL"
-            }
-        ]
-    }
+  {
+    "Endpoint": "http://localhost:9200",
+    "ToPopulate": [
+      {
+        "Database": "People"
+      }
+    ],
+    "ToDelete": [
+      {
+        "Database": "conversation-data",
+        "Collection": "ALL"
+      },
+      {
+        "Database": "user-data",
+        "Collection": "ALL"
+      }
+    ]
+  }
 ]
