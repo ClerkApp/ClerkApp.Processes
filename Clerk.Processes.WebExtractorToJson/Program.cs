@@ -4,6 +4,7 @@ using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using Bot.Storage.Elasticsearch;
 using Clerk.Processes.WebExtractorToJson.Model.GSMArena;
 using Clerk.Processes.WebExtractorToJson.Model.MobilePhone;
@@ -29,7 +30,7 @@ namespace Clerk.Processes.WebExtractorToJson
             elasticOptions = new ElasticsearchStorageOptions
             {
                 ElasticsearchEndpoint = new Uri(@"http://localhost:9200"),
-                IndexName = "electronics_phones",
+                IndexName = "mobiles",
                 IndexMappingDepthLimit = 10000
             };
 
@@ -43,10 +44,42 @@ namespace Clerk.Processes.WebExtractorToJson
 
             elasticClient = new ElasticClient(connectionSettings);
 
-            // like this www.gsmarena.com/oneplus-phones-f-95
-            ExtractPhones("https://www.gsmarena.com/samsung-phones-f-9");
-            //ExtractPhoneInfo("https://www.gsmarena.com/oneplus_7t-9816.php", 1);
+            //ExtractPhoneInfo("https://www.gsmarena.com/samsung_galaxy_a31-10149.php", 1);
             //ExtractAllPhones();
+
+            //ExtractPhones("samsung", 9);
+            ExtractPhones("htc", 45);
+            ExtractPhones("motorola", 4);
+            ExtractPhones("lenovo", 73);
+            ExtractPhones("xiaomi", 80);
+            ExtractPhones("google", 107);
+            ExtractPhones("honor", 121);
+            ExtractPhones("oppo", 82);
+            ExtractPhones("realme", 118);
+            ExtractPhones("oneplus", 95);
+            ExtractPhones("vivo", 98);
+            ExtractPhones("meizu", 74);
+            ExtractPhones("blackberry", 36);
+            ExtractPhones("asus", 46);
+            ExtractPhones("alcatel", 5);
+            ExtractPhones("zte", 62);
+            ExtractPhones("microsoft", 64);
+            ExtractPhones("vodafone", 53);
+            ExtractPhones("energizer", 106);
+            ExtractPhones("cat", 89);
+            ExtractPhones("sharp", 23);
+            ExtractPhones("micromax", 66);
+            ExtractPhones("infinix", 119);
+            ExtractPhones("ulefone", 124);
+            ExtractPhones("tecno", 120);
+            ExtractPhones("blu", 67);
+            ExtractPhones("acer", 59);
+            ExtractPhones("wiko", 96);
+            ExtractPhones("panasonic", 6);
+            ExtractPhones("verykool", 70);
+            ExtractPhones("plum", 72);
+
+            Console.WriteLine("Done processing.");
             Console.ReadKey();
         }
 
@@ -92,12 +125,25 @@ namespace Clerk.Processes.WebExtractorToJson
             }
         }
 
+        public static int RandomNumber(int min, int max)
+        {
+            var random = new Random();
+            return random.Next(min, max);
+        }
+
+        public static void ExtractPhones(string brand, int phoneNo)
+        {
+            var urlLink = $"https://www.gsmarena.com/{brand}-phones-f-{phoneNo}";
+            ExtractPhones(urlLink);
+            Thread.Sleep(TimeSpan.FromSeconds(RandomNumber(30, 120)));
+        }
+
         public static void ExtractPhones(string urlLink)
         {
             var pageNo = 1;
-            var numberPhone = 0;
             while (true)
             {
+                var numberPhone = 0;
                 Console.WriteLine($"----------------- Page no: {pageNo}");
                 var phonesUrl = $"{urlLink}-0-p{pageNo++}.php";
                 var web = new HtmlWeb();
@@ -110,18 +156,38 @@ namespace Clerk.Processes.WebExtractorToJson
                     var phonesListNode = doc.DocumentNode?.SelectNodes("//div[@class='makers']/ul").Descendants("li")
                         .Select(n => n.LastChild.Attributes["href"].Value).ToList();
 
-                    if (phonesListNode.Count.Equals(0)) break;
+                    if ((phonesListNode != null && phonesListNode.Count.Equals(0)) || pageNo >= 5)
+                    {
+                        return;
+                    }
 
                     if (!Directory.Exists($"C:\\Licenta\\extracted\\{brandName}"))
                     {
                         Directory.CreateDirectory($"C:\\Licenta\\extracted\\{brandName}");
                     }
 
-                    foreach (var phoneNode in phonesListNode)
+                    if (phonesListNode != null)
                     {
-                        var phoneUrl = $"https://www.gsmarena.com/{phoneNode}";
-                        numberPhone++;
-                        ExtractPhoneInfo(phoneUrl, numberPhone);
+                        phonesListNode.RemoveRange(0, numberPhone);
+                        foreach (var phoneUrl in phonesListNode.Select(phoneNode => $"https://www.gsmarena.com/{phoneNode}"))
+                        {
+                            numberPhone++;
+                            Thread.Sleep(TimeSpan.FromSeconds(RandomNumber(1,10)));
+                            try
+                            {
+                                ExtractPhoneInfo(phoneUrl, numberPhone);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error - {phoneUrl}");
+                                using var writer = new StreamWriter(@"C:\Licenta\extracted\Error.txt", true);
+                                writer.WriteLine();
+                                writer.WriteLine($"Error - {phoneUrl}");
+                                writer.WriteLine("#--------------#");
+                                writer.WriteLine(ex.Message);
+                                writer.WriteLine();
+                            }
+                        }
                     }
                 }
             }
@@ -146,6 +212,11 @@ namespace Clerk.Processes.WebExtractorToJson
                     .Select(n => n.InnerHtml).ToList().First().Split(' ')[0];
 
                 if (phoneStatus.Contains("Discontinued"))
+                {
+                    return;
+                }
+
+                if (phoneStatus.Contains("Coming"))
                 {
                     return;
                 }
@@ -194,7 +265,7 @@ namespace Clerk.Processes.WebExtractorToJson
                     AddProperty(expando, left, right, title);
                 }
 
-                var test = ConvertToMongo(expando);
+                var test = ConvertToElastic(expando);
 
                 using (var file = File.CreateText(filePath))
                 {
@@ -205,7 +276,7 @@ namespace Clerk.Processes.WebExtractorToJson
             }
         }
 
-        public static object ConvertToMongo(ExpandoObject expando)
+        public static object ConvertToElastic(ExpandoObject expando)
         {
             var outputJson = JsonConvert.SerializeObject(expando);
             var gsmArena = JsonConvert.DeserializeObject<GsmArenaModel>(outputJson);
@@ -215,16 +286,14 @@ namespace Clerk.Processes.WebExtractorToJson
                 return expando;
             }
 
-            var phoneElastic = new PhoneElastic(gsmArena);
+            var phoneElastic = new Mobile(gsmArena);
 
-            var documentItem = new DocumentItem
+            if (!elasticClient.Indices.Exists(elasticOptions.IndexName).Exists)
             {
-                Id = phoneName.BuildGuid().ToString(),
-                Document = JObject.FromObject(phoneElastic, JsonSerializer),
-                Timestamp = DateTime.Now.ToUniversalTime()
-            };
-
-            elasticClient.IndexAsync(documentItem, i => i.Index(elasticOptions.IndexName).Refresh(Refresh.True));
+                elasticClient.Indices.Create(elasticOptions.IndexName, c => c
+                    .Map<Mobile>(p => p.AutoMap()));
+            }
+            elasticClient.IndexAsync(JObject.FromObject(phoneElastic, JsonSerializer), i => i.Index(elasticOptions.IndexName).Refresh(Refresh.True));
 
             return JsonConvert.SerializeObject(phoneElastic);
         }
