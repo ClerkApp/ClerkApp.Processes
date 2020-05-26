@@ -219,7 +219,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             USD = '$',
             EUR = '€',
             GBP = '£',
-            R = '₹'
+            RUP = '₹'
         }
 
         private static Battery EnrichBattery(BatteryJson gsmModel)
@@ -568,27 +568,6 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 return new Camera();
             }
 
-            var selfieVideos = new Dictionary<int, List<string>>();
-            var selfieVideoLists = gsmModel.SelfieCamera?.Video?[0]?.SplitAndTrim(',').Where(x => x.Contains("@")).Select(x => x.RemoveWhitespace());
-
-            if (selfieVideoLists != null)
-            {
-                foreach (var video in selfieVideoLists)
-                {
-                    int.TryParse(video.SplitAndTrim('p')[0].SplitAndTrim('K')[0], out var keyResult);
-                    var key = int.Parse(keyResult.ToString());
-                    if (selfieVideos.ContainsKey(key))
-                    {
-                        selfieVideos[key].Add(video);
-                    }
-                    else
-                    {
-                        selfieVideos.Add(key, new List<string> { video });
-                    }
-                }
-            }
-
-
             var mainVideos = new Dictionary<int, List<string>>();
             var mainVideoLists = gsmModel.MainCamera?.Video?[0]?.SplitAndTrim(',').Where(x => x.Contains("@")).Select(x => x.RemoveWhitespace());
 
@@ -641,8 +620,27 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 });
             }
 
+            var selfieVideos = new Dictionary<int, List<string>>();
+            var selfieVideoLists = gsmModel.SelfieCamera?.Video?[0]?.SplitAndTrim(',').Where(x => x.Contains("@")).Select(x => x.RemoveWhitespace());
 
-            var selfieCameraLists = gsmModel.MainCamera.Cameras.ToListTrim();
+            if (selfieVideoLists != null)
+            {
+                foreach (var video in selfieVideoLists)
+                {
+                    int.TryParse(video.SplitAndTrim('p')[0].SplitAndTrim('K')[0], out var keyResult);
+                    var key = int.Parse(keyResult.ToString());
+                    if (selfieVideos.ContainsKey(key))
+                    {
+                        selfieVideos[key].Add(video);
+                    }
+                    else
+                    {
+                        selfieVideos.Add(key, new List<string> { video });
+                    }
+                }
+            }
+
+            var selfieCameraLists = gsmModel.SelfieCamera.Cameras.ToListTrim();
             var selfieLens = new List<LensCamera>();
             foreach (var selfieCamera in selfieCameraLists)
             {

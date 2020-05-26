@@ -48,36 +48,38 @@ namespace Clerk.Processes.WebExtractorToJson
             //ExtractAllPhones();
 
             //ExtractPhones("samsung", 9);
-            ExtractPhones("htc", 45);
-            ExtractPhones("motorola", 4);
-            ExtractPhones("lenovo", 73);
-            ExtractPhones("xiaomi", 80);
-            ExtractPhones("google", 107);
-            ExtractPhones("honor", 121);
-            ExtractPhones("oppo", 82);
-            ExtractPhones("realme", 118);
+            //ExtractPhones("htc", 45);
+            //ExtractPhones("apple", 48);
+            //ExtractPhones("asus", 46);
+            //ExtractPhones("blackberry", 36);
+            //ExtractPhones("benq", 31);
+            //ExtractPhones("blu", 67);
+            //ExtractPhones("dell", 61);
+            //ExtractPhones("gigabyte", 47);
+            //ExtractPhones("hp", 41);
+            //ExtractPhones("google", 107);
+            //ExtractPhones("honor", 121);
+            //ExtractPhones("htc", 45);
+            //ExtractPhones("huawei", 58);
+            //ExtractPhones("infinix", 119);
+            //ExtractPhones("infinix", 119);
+            //ExtractPhones("lava", 94);
+            //ExtractPhones("lenovo", 73);
+            //ExtractPhones("lg", 20);
+            //ExtractPhones("microsoft", 64);
+            //ExtractPhones("motorola", 4);
+            //ExtractPhones("nokia", 1);
+            //ExtractPhones("oppo", 82);
             ExtractPhones("oneplus", 95);
-            ExtractPhones("vivo", 98);
-            ExtractPhones("meizu", 74);
-            ExtractPhones("blackberry", 36);
-            ExtractPhones("asus", 46);
-            ExtractPhones("alcatel", 5);
-            ExtractPhones("zte", 62);
-            ExtractPhones("microsoft", 64);
-            ExtractPhones("vodafone", 53);
-            ExtractPhones("energizer", 106);
-            ExtractPhones("cat", 89);
-            ExtractPhones("sharp", 23);
-            ExtractPhones("micromax", 66);
-            ExtractPhones("infinix", 119);
-            ExtractPhones("ulefone", 124);
-            ExtractPhones("tecno", 120);
-            ExtractPhones("blu", 67);
-            ExtractPhones("acer", 59);
-            ExtractPhones("wiko", 96);
+            ExtractPhones("orange", 71);
             ExtractPhones("panasonic", 6);
-            ExtractPhones("verykool", 70);
-            ExtractPhones("plum", 72);
+            ExtractPhones("philips", 11);
+            ExtractPhones("qmobile", 103);
+            ExtractPhones("realme", 118);
+            ExtractPhones("xiaomi", 80);
+            ExtractPhones("zte", 62);
+            ExtractPhones("vivo", 98);
+            ExtractPhones("sony", 7);
 
             Console.WriteLine("Done processing.");
             Console.ReadKey();
@@ -104,11 +106,6 @@ namespace Clerk.Processes.WebExtractorToJson
                         try
                         {
                             var phoneKeyWords = phonesNode.Split('-');
-
-                            if (brandCounter.Equals("Acer"))
-                            {
-                                continue;
-                            }
 
                             Console.WriteLine($"-- {brandCounter} -- {phoneKeyWords[0].ToUpper()} ------");
                             brandCounter++;
