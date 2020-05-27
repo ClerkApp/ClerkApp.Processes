@@ -19,6 +19,7 @@ namespace Clerk.Processes.WebExtractorToJson
 {
     internal class Program
     {
+        private static string locationPath = @"D:\Licenta\ExtractedMobiles";
         private static string brandName = string.Empty;
         private static string phoneName = string.Empty;
         private static ElasticClient elasticClient;
@@ -257,7 +258,7 @@ namespace Clerk.Processes.WebExtractorToJson
                     AddProperty(expando, left, right, title);
                 }
 
-                var filePath = $"C:\\Licenta\\extracted\\{brandName}\\{phoneName}.json";
+                var filePath = $@"{locationPath}\{brandName}\{phoneName}.json";
                 StoreToDbAndFile(expando, filePath, numberPhone);
             }
         }
