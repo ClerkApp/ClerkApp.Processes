@@ -202,18 +202,13 @@ namespace Clerk.Processes.WebExtractorToJson
 
             if (phoneName != null && !string.IsNullOrWhiteSpace(phoneName))
             {
-
-                var filePath = $"C:\\Licenta\\extracted\\{brandName}\\{phoneName}.json";
-
                 var phoneStatus = doc.DocumentNode?.SelectNodes("//td[@data-spec='status']")
                     .Select(n => n.InnerHtml).ToList().First().Split(' ')[0];
 
-                if (phoneStatus.Contains("Discontinued"))
-                {
-                    return;
-                }
-
-                if (phoneStatus.Contains("Coming"))
+                if (phoneStatus.Contains("Discontinued") ||
+                    phoneStatus.Contains("Coming") ||
+                    phoneStatus.Contains("Cancelled") ||
+                    phoneStatus.Contains("Rumored"))
                 {
                     return;
                 }
@@ -262,28 +257,28 @@ namespace Clerk.Processes.WebExtractorToJson
                     AddProperty(expando, left, right, title);
                 }
 
-                var test = ConvertToElastic(expando);
-
-                using (var file = File.CreateText(filePath))
-                {
-                    JsonSerializer.Serialize(file, test);
-                }
-
-                Console.WriteLine($"{numberPhone}. {phoneName}");
+                var filePath = $"C:\\Licenta\\extracted\\{brandName}\\{phoneName}.json";
+                StoreToDbAndFile(expando, filePath, numberPhone);
             }
         }
 
-        public static object ConvertToElastic(ExpandoObject expando)
+        public static void StoreToDbAndFile(ExpandoObject expando, string filePath, int numberPhone)
         {
             var outputJson = JsonConvert.SerializeObject(expando);
             var gsmArena = JsonConvert.DeserializeObject<GsmArenaModel>(outputJson);
 
             if (gsmArena.Network.Technology.First().Contains("no", StringComparison.CurrentCultureIgnoreCase))
             {
-                return expando;
+                return;
             }
 
             var phoneElastic = new Mobile(gsmArena);
+
+            if (phoneElastic.Display.Size.In < 2 ||
+                phoneElastic.Display.Size.In > 8)
+            {
+                return;
+            }
 
             if (!elasticClient.Indices.Exists(elasticOptions.IndexName).Exists)
             {
@@ -292,7 +287,14 @@ namespace Clerk.Processes.WebExtractorToJson
             }
             elasticClient.IndexAsync(JObject.FromObject(phoneElastic, JsonSerializer), i => i.Index(elasticOptions.IndexName).Refresh(Refresh.True));
 
-            return JsonConvert.SerializeObject(phoneElastic);
+            var phoneData = JsonConvert.SerializeObject(phoneElastic);
+
+            using (var file = File.CreateText(filePath))
+            {
+                JsonSerializer.Serialize(file, phoneData);
+            }
+
+            Console.WriteLine($"{numberPhone}. {phoneName}");
         }
 
         public static void AddProperty(ExpandoObject expando, string propertyName, object propertyValue)
