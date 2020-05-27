@@ -11,7 +11,7 @@ namespace Clerk.Processes.WebExtractorToJson
         public static string[] SplitAndTrim(this string str, char separator)
         {
             var list = str.Split(separator);
-            return list.Select(s => s.Trim()).ToArray();
+            return list.Select(s => s.Trim().ToLower()).ToArray();
         }
 
         public static string RemoveWhitespace(this string str)
@@ -23,7 +23,7 @@ namespace Clerk.Processes.WebExtractorToJson
         {
             if (array != null)
             {
-                return Array.ConvertAll(array, p => p.Trim()).ToList();
+                return Array.ConvertAll(array, p => p.Trim().ToLower()).ToList();
             }
 
             return new List<string>();

@@ -14,16 +14,17 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         {
             Id = gsmModel.Name.Main[0].BuildGuid();
             Timestamp = DateTime.Now.ToUniversalTime();
-            Image = EnrichImages(gsmModel.Photo);
+            Image = gsmModel.Photo;
+            //Image = EnrichImages(gsmModel.Photo);
             Status = new Status
             {
-                Announced = gsmModel.Launch.Announced[0],
-                Launch = gsmModel.Launch.Status[0]
+                Announced = gsmModel.Launch.Announced[0].ToLower(),
+                Launch = gsmModel.Launch.Status[0].ToLower()
             };
             Name = new Name
             {
-                Brand = gsmModel.Name.Main[0].SplitAndTrim(' ')[0],
-                Main = gsmModel.Name.Main[0].SplitAndTrim('(')[0]
+                Brand = gsmModel.Name.Main[0].SplitAndTrim(' ')[0].ToLower(),
+                Main = gsmModel.Name.Main[0].SplitAndTrim('(')[0].ToLower()
             };
             Network = new Network
             {
@@ -51,7 +52,8 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
         public Guid Id { get; set; }
         public DateTime Timestamp { get; set; }
-        public ImageData Image { get; set; }
+        public Uri Image { get; set; }
+        //public ImageData Image { get; set; }
         public Status Status { get; set; }
         public Name Name { get; set; }
         public Network Network { get; set; }
@@ -282,9 +284,10 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                     double.TryParse(chipset.SplitAndTrim('(')[1].Split("nm")[0], out result);
                 }
 
+                int.TryParse(chipset.SplitAndTrim('(')[0].SplitAndTrim(' ')[^1], out var generationResult);
                 platform.Chipset.Add(new Chipset
                 {
-                    Generation = chipset.SplitAndTrim('(')[0].SplitAndTrim(' ')[^1],
+                    Generation = generationResult,
                     Name = chipset.SplitAndTrim('(')[0],
                     Size = result,
                     Type = chipset.SplitAndTrim('-')[^1]
@@ -292,10 +295,11 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             }
 
             foreach (var gpu in gsmModel.Platform.Gpu.ToListTrim())
-            {
+            {;
+                int.TryParse(gpu.SplitAndTrim('-')[0].SplitAndTrim(' ')[^1], out var generationResult);
                 platform.GPU.Add(new GPU()
                 {
-                    Generation = gpu.SplitAndTrim('-')[0].SplitAndTrim(' ')[^1],
+                    Generation = generationResult,
                     Name = gpu.SplitAndTrim('-')[0],
                     Type = gpu.SplitAndTrim('-')[^1]
                 });
@@ -377,7 +381,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                     platform.Tests.Add(new Performance
                     {
                         Score = double.Parse(scoreResult.ToString(CultureInfo.InvariantCulture)),
-                        Type = perf.SplitAndTrim(':')[0].Replace("\n", "")
+                        Type = perf.SplitAndTrim(':')[0].Replace("\n", "").ToLower()
                     });
                 }
             }
@@ -405,7 +409,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             if (!string.IsNullOrWhiteSpace(water))
             {
                 int.TryParse(water.Split(" ")[0].Split("IP")[^1], out var waterResult);
-                waterResistent = new KeyValuePair<int, string>(int.Parse(waterResult.ToString()), water);
+                waterResistent = new KeyValuePair<int, string>(int.Parse(waterResult.ToString()), water.ToLower());
             }
             else
             {
@@ -462,7 +466,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             return new Body
             {
                 Build = gsmModel.Body.Build is null ? new List<string>() : gsmModel.Body.Build[0].SplitAndTrim(',').ToListTrim(),
-                Sim = gsmModel.Body.Sim[0],
+                Sim = gsmModel.Body.Sim[0].ToLower(),
                 WaterResistant = waterResistent,
                 Weight = bodyWeight,
                 Dimensions = dimensions
@@ -514,9 +518,9 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
             var sizes = gsmModelDisplay.Size.ToListTrim()[0]?.SplitAndTrim(',').ToListTrim();
             double.TryParse(Regex.Match(sizes.FirstOrDefault(x => x.Contains("in")) ?? string.Empty, @"\d+(\.?)\d*").Value,
-                out var cmSize);
-            double.TryParse(Regex.Match(sizes.FirstOrDefault(x => x.Contains("cm")) ?? string.Empty, @"\d+(\.?)\d*").Value,
                 out var inSize);
+            double.TryParse(Regex.Match(sizes.FirstOrDefault(x => x.Contains("cm")) ?? string.Empty, @"\d+(\.?)\d*").Value,
+                out var cmSize);
 
             return new Display
             {
@@ -774,7 +778,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
     {
         public string Type { get; set; }
         public string Name { get; set; }
-        public string Generation { get; set; }
+        public int Generation { get; set; }
         public double Size { get; set; }
     }
 
@@ -796,7 +800,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
     {
         public string Type { get; set; }
         public string Name { get; set; }
-        public string Generation { get; set; }
+        public int Generation { get; set; }
     }
 
     public class Memory
