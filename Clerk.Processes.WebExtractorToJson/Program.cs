@@ -26,7 +26,7 @@ namespace Clerk.Processes.WebExtractorToJson
         private static ElasticsearchStorageOptions elasticOptions;
         private static readonly JsonSerializer JsonSerializer = new JsonSerializer { Formatting = Formatting.Indented };
 
-        public static void Main(string[] args)
+        public static void SetUpElastic()
         {
             elasticOptions = new ElasticsearchStorageOptions
             {
@@ -45,42 +45,93 @@ namespace Clerk.Processes.WebExtractorToJson
 
             elasticClient = new ElasticClient(connectionSettings);
 
-            //ExtractPhoneInfo("https://www.gsmarena.com/samsung_galaxy_a31-10149.php", 1);
+            if (!elasticClient.Indices.Exists(elasticOptions.IndexName).Exists)
+            {
+                elasticClient.Indices.Create(elasticOptions.IndexName, c => c
+                    .Settings(s => s
+                        .NumberOfShards(1)
+                        .NumberOfReplicas(1)
+                    )
+                    .Map<Mobile>(m => m.AutoMap()));
+            }
+        }
+
+        public static void StoreToDbAndFile(ExpandoObject expando, string filePath, int numberPhone, string phoneUrl)
+        {
+            var outputJson = JsonConvert.SerializeObject(expando);
+            var gsmArena = JsonConvert.DeserializeObject<GsmArenaModel>(outputJson);
+
+            if (gsmArena.Network.Technology.First().Contains("no", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return;
+            }
+
+            var phoneElastic = new Mobile(gsmArena, phoneUrl);
+
+            if (phoneElastic.Display.Size.In < 2 ||
+                phoneElastic.Display.Size.In > 8)
+            {
+                return;
+            }
+
+            if (!phoneElastic.Price.Any(x => x.Key.Equals("EUR")))
+            {
+                return;
+            }
+
+            elasticClient.IndexAsync(JObject.FromObject(phoneElastic), i => i.Index(elasticOptions.IndexName).Refresh(Refresh.True));
+
+            var phoneData = JsonConvert.SerializeObject(phoneElastic);
+
+            using (var file = File.CreateText(filePath))
+            {
+                JsonSerializer.Serialize(file, phoneData);
+            }
+
+            Console.WriteLine($"{numberPhone}. {phoneName}");
+        }
+
+        public static void Main(string[] args)
+        {
+            SetUpElastic();
+
+            //ExtractPhoneInfo("https://www.gsmarena.com/samsung_galaxy_s20_ultra-10084.php", 1);
+            //ExtractPhoneInfo("https://www.gsmarena.com/samsung_galaxy_s20_5g-10044.php", 1);
             //ExtractAllPhones();
 
-            //ExtractPhones("samsung", 9);
-            //ExtractPhones("htc", 45);
-            //ExtractPhones("apple", 48);
-            //ExtractPhones("asus", 46);
-            //ExtractPhones("blackberry", 36);
-            //ExtractPhones("benq", 31);
-            //ExtractPhones("blu", 67);
-            //ExtractPhones("dell", 61);
-            //ExtractPhones("gigabyte", 47);
-            //ExtractPhones("hp", 41);
-            //ExtractPhones("google", 107);
-            //ExtractPhones("honor", 121);
-            //ExtractPhones("htc", 45);
-            //ExtractPhones("huawei", 58);
-            //ExtractPhones("infinix", 119);
-            //ExtractPhones("infinix", 119);
-            //ExtractPhones("lava", 94);
-            //ExtractPhones("lenovo", 73);
-            //ExtractPhones("lg", 20);
-            //ExtractPhones("microsoft", 64);
-            //ExtractPhones("motorola", 4);
-            //ExtractPhones("nokia", 1);
-            //ExtractPhones("oppo", 82);
+            ExtractPhones("samsung", 9);
+            ExtractPhones("apple", 48);
+            ExtractPhones("google", 107);
+            ExtractPhones("honor", 121);
+            ExtractPhones("huawei", 58);
+            ExtractPhones("sony", 7);
+            ExtractPhones("xiaomi", 80);
+            ExtractPhones("realme", 118);
             ExtractPhones("oneplus", 95);
+            ExtractPhones("motorola", 4);
+            ExtractPhones("nokia", 1);
+            ExtractPhones("lg", 20);
+            ExtractPhones("asus", 46);
+
+            ExtractPhones("htc", 45);
+            ExtractPhones("blackberry", 36);
+            ExtractPhones("benq", 31);
+            ExtractPhones("blu", 67);
+            ExtractPhones("dell", 61);
+            ExtractPhones("gigabyte", 47);
+            ExtractPhones("hp", 41);
+            ExtractPhones("htc", 45);
+            ExtractPhones("infinix", 119);
+            ExtractPhones("lava", 94);
+            ExtractPhones("lenovo", 73);
+            ExtractPhones("microsoft", 64);
+            ExtractPhones("oppo", 82);
             ExtractPhones("orange", 71);
             ExtractPhones("panasonic", 6);
             ExtractPhones("philips", 11);
             ExtractPhones("qmobile", 103);
-            ExtractPhones("realme", 118);
-            ExtractPhones("xiaomi", 80);
             ExtractPhones("zte", 62);
             ExtractPhones("vivo", 98);
-            ExtractPhones("sony", 7);
 
             Console.WriteLine("Done processing.");
             Console.ReadKey();
@@ -159,9 +210,9 @@ namespace Clerk.Processes.WebExtractorToJson
                         return;
                     }
 
-                    if (!Directory.Exists($"C:\\Licenta\\extracted\\{brandName}"))
+                    if (!Directory.Exists($@"{locationPath}\\{brandName}"))
                     {
-                        Directory.CreateDirectory($"C:\\Licenta\\extracted\\{brandName}");
+                        Directory.CreateDirectory($@"{locationPath}\\{brandName}");
                     }
 
                     if (phonesListNode != null)
@@ -178,7 +229,7 @@ namespace Clerk.Processes.WebExtractorToJson
                             catch (Exception ex)
                             {
                                 Console.WriteLine($"Error - {phoneUrl}");
-                                using var writer = new StreamWriter(@"C:\Licenta\extracted\Error.txt", true);
+                                using var writer = new StreamWriter($@"{locationPath}\Error.txt", true);
                                 writer.WriteLine();
                                 writer.WriteLine($"Error - {phoneUrl}");
                                 writer.WriteLine("#--------------#");
@@ -191,10 +242,10 @@ namespace Clerk.Processes.WebExtractorToJson
             }
         }
 
-        public static void ExtractPhoneInfo(string url, int numberPhone)
+        public static void ExtractPhoneInfo(string phoneUrl, int numberPhone)
         {
             var web = new HtmlWeb();
-            var doc = web.Load(Uri.EscapeUriString(url));
+            var doc = web.Load(Uri.EscapeUriString(phoneUrl));
             phoneName = doc.DocumentNode?.SelectNodes("//h1[@data-spec='modelname']")
                 .Select(n => n.InnerHtml).ToList().First().Split('/')[0];
 
@@ -259,43 +310,8 @@ namespace Clerk.Processes.WebExtractorToJson
                 }
 
                 var filePath = $@"{locationPath}\{brandName}\{phoneName}.json";
-                StoreToDbAndFile(expando, filePath, numberPhone);
+                StoreToDbAndFile(expando, filePath, numberPhone, phoneUrl);
             }
-        }
-
-        public static void StoreToDbAndFile(ExpandoObject expando, string filePath, int numberPhone)
-        {
-            var outputJson = JsonConvert.SerializeObject(expando);
-            var gsmArena = JsonConvert.DeserializeObject<GsmArenaModel>(outputJson);
-
-            if (gsmArena.Network.Technology.First().Contains("no", StringComparison.CurrentCultureIgnoreCase))
-            {
-                return;
-            }
-
-            var phoneElastic = new Mobile(gsmArena);
-
-            if (phoneElastic.Display.Size.In < 2 ||
-                phoneElastic.Display.Size.In > 8)
-            {
-                return;
-            }
-
-            if (!elasticClient.Indices.Exists(elasticOptions.IndexName).Exists)
-            {
-                elasticClient.Indices.Create(elasticOptions.IndexName, c => c
-                    .Map<Mobile>(p => p.AutoMap()));
-            }
-            elasticClient.IndexAsync(JObject.FromObject(phoneElastic, JsonSerializer), i => i.Index(elasticOptions.IndexName).Refresh(Refresh.True));
-
-            var phoneData = JsonConvert.SerializeObject(phoneElastic);
-
-            using (var file = File.CreateText(filePath))
-            {
-                JsonSerializer.Serialize(file, phoneData);
-            }
-
-            Console.WriteLine($"{numberPhone}. {phoneName}");
         }
 
         public static void AddProperty(ExpandoObject expando, string propertyName, object propertyValue)
@@ -427,7 +443,7 @@ namespace Clerk.Processes.WebExtractorToJson
 
         private static void SaveExToFile(Exception ex)
         {
-            string filePath = @"C:\Licenta\extracted\log.txt";
+            string filePath = $@"{locationPath}\log.txt";
 
             using (StreamWriter writer = new StreamWriter(filePath, true))
             {

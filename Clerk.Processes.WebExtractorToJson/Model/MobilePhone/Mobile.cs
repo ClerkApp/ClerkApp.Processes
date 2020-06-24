@@ -10,50 +10,8 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 {
     public class Mobile
     {
-        public Mobile(GsmArenaModel gsmModel)
-        {
-            Id = gsmModel.Name.Main[0].BuildGuid();
-            Timestamp = DateTime.Now.ToUniversalTime();
-            Image = gsmModel.Photo;
-            //Image = EnrichImages(gsmModel.Photo);
-            Status = new Status
-            {
-                Announced = gsmModel.Launch.Announced[0].ToLower(),
-                Launch = gsmModel.Launch.Status[0].ToLower()
-            };
-            Name = new Name
-            {
-                Brand = gsmModel.Name.Main[0].SplitAndTrim(' ')[0].ToLower(),
-                Main = gsmModel.Name.Main[0].SplitAndTrim('(')[0].ToLower()
-            };
-            Network = new Network
-            {
-                Bands = EnrichNetworkBands(gsmModel.Network),
-                Speed = gsmModel.Network.Speed is null ? new List<string>() : gsmModel.Network.Speed[0].Split(",").ToListTrim(),
-                Technology = gsmModel.Network.Technology is null ? new List<string>() : gsmModel.Network.Technology[0].Split("/").ToListTrim(),
-            };
-            Body = EnrichBody(gsmModel);
-            Platform = EnrichPlatform(gsmModel);
-            Memory = EnrichMemory(gsmModel.Memory);
-            Display = EnrichDisplay(gsmModel.Display);
-            Camera = EnrichCamera(gsmModel);
-            Sound = new Sound
-            {
-                Jack = "Yes".Equals(gsmModel.Sound.The35MmJack != null ? gsmModel.Sound.The35MmJack[0] : "null"),
-                Loudspeaker = gsmModel.Sound.Loudspeaker.Contains("Yes"),
-                Stereo = gsmModel.Sound.Loudspeaker.Contains("stereo")
-            };
-            Comms = EnrichComms(gsmModel);
-            Battery = EnrichBattery(gsmModel.Battery);
-            Price = EnrichPrice(gsmModel);
-            Colors = gsmModel.Misc.Colors[0].SplitAndTrim(',').ToListTrim();
-            Features = EnrichFeatures(gsmModel);
-        }
-
         public Guid Id { get; set; }
-        public DateTime Timestamp { get; set; }
-        public Uri Image { get; set; }
-        //public ImageData Image { get; set; }
+        public DataLink DataLinks { get; set; }
         public Status Status { get; set; }
         public Name Name { get; set; }
         public Network Network { get; set; }
@@ -69,6 +27,90 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         public Dictionary<string, double> Price { get; set; }
         public List<string> Colors { get; set; }
 
+        public Mobile(GsmArenaModel gsmModel, string phoneUrl)
+        {
+            Id = gsmModel.Name.Main[0].BuildGuid();
+            DataLinks = new DataLink()
+            {
+                Image = gsmModel.Photo,
+                Link = new Uri(phoneUrl)
+            };
+            Status = new Status
+            {
+                Announced = gsmModel.Launch.Announced[0].ToLower(),
+                Year = int.Parse(gsmModel.Launch.Announced[0].SplitAndTrim(",").First()),
+                Launch = gsmModel.Launch.Status[0].ToLower()
+            };
+            Name = new Name
+            {
+                Brand = gsmModel.Name.Main[0].SplitAndTrim(" ")[0].ToLower(),
+                Main = gsmModel.Name.Main[0].SplitAndTrim("(")[0].ToLower()
+            };
+            Network = new Network
+            {
+                Band = EnrichNetworkBands(gsmModel.Network),
+                Speed = gsmModel.Network.Speed is null ? new List<string>() : gsmModel.Network.Speed[0].Split(",").ToListTrim(),
+                Technology = EnrichTechnologyBands(gsmModel)
+            };
+            Body = EnrichBody(gsmModel);
+            Platform = EnrichPlatform(gsmModel);
+            Memory = EnrichMemory(gsmModel.Memory);
+            Display = EnrichDisplay(gsmModel.Display);
+            Camera = EnrichCamera(gsmModel);
+            Sound = EnrichSound(gsmModel);
+            Comms = EnrichComms(gsmModel);
+            Battery = EnrichBattery(gsmModel.Battery);
+            Price = EnrichPrice(gsmModel);
+            Colors = gsmModel.Misc.Colors[0].SplitAndTrim(",").ToListTrim();
+            Features = EnrichFeatures(gsmModel);
+        }
+
+        private TechSpec EnrichTechnologyBands(GsmArenaModel gsmModel)
+        {
+            var technology = new TechSpec()
+            {
+                Techs = new List<string>(),
+                TotalTechs = 0
+            };
+
+
+            if (gsmModel.Network.Technology != null)
+            {
+                foreach (var value in gsmModel.Network.Technology[0].Split("/").ToListTrim())
+                {
+                    technology.Techs.Add(value);
+                    technology.TotalTechs += 1;
+                }
+            }
+
+            return technology;
+        }
+
+        private Sound EnrichSound(GsmArenaModel gsmModel)
+        {
+            bool hasJack = false;
+            bool hasSpeaker = false;
+            bool isStereo = false;
+
+            if (gsmModel.Sound.The35MmJack != null)
+            {
+                hasJack = gsmModel.Sound.The35MmJack[0].ToLower().Contains("yes");
+            }
+
+            if (gsmModel.Sound.Loudspeaker != null)
+            {
+                hasSpeaker = gsmModel.Sound.Loudspeaker[0].ToLower().Contains("yes");
+                isStereo = gsmModel.Sound.Loudspeaker[0].ToLower().Contains("stereo");
+            }
+
+            return new Sound
+            {
+                Jack = hasJack,
+                Loudspeaker = hasSpeaker,
+                Stereo = isStereo
+            };
+        }
+
         private static ImageData EnrichImages(Uri gsmModelPhoto)
         {
             var img = new WebClient().DownloadData(gsmModelPhoto);
@@ -82,25 +124,29 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
         private Comms EnrichComms(GsmArenaModel gsmModel)
         {
-            double.TryParse(gsmModel.Comms.Usb[0].SplitAndTrim(',')[0], out var usbResult);
-            double.TryParse(Regex.Match(gsmModel.Comms.Bluetooth[0].SplitAndTrim(',')[0], @"\d+(\.?)\d*").Value, out var blueResult);
+            double.TryParse(gsmModel.Comms.Usb[0].SplitAndTrim(",")[0], out var usbResult);
+            double.TryParse(Regex.Match(gsmModel.Comms.Bluetooth[0].SplitAndTrim(",")[0], @"\d+(\.?)\d*").Value, out var blueResult);
 
             return new Comms
             {
                 Bluetooth = double.Parse(blueResult.ToString(CultureInfo.InvariantCulture)),
-                GPS = gsmModel.Comms.Gps is null
+                Gps = gsmModel.Comms.Gps is null
                     ? new List<string>()
-                    : gsmModel.Comms.Gps[0].SplitAndTrim(',').Skip(1).ToList().Select(x => x.SplitAndTrim(' ')[^1]).ToList(),
-                Usb = new KeyValuePair<string, double>(gsmModel.Comms.Usb[0].SplitAndTrim(',')[^1].Trim(), double.Parse(usbResult.ToString(CultureInfo.InvariantCulture))),
+                    : gsmModel.Comms.Gps[0].SplitAndTrim(",").Skip(1).ToList().Select(x => x.SplitAndTrim(" ")[^1]).ToList(),
+                Usb = new KeyValuePair<string, double>(gsmModel.Comms.Usb[0].SplitAndTrim(",")[^1].Trim(), double.Parse(usbResult.ToString(CultureInfo.InvariantCulture))),
                 Wifi = gsmModel.Comms.Wlan is null
                     ? new List<string>()
-                    : gsmModel.Comms.Wlan[0].SplitAndTrim(',')[0].SplitAndTrim('/').ToListTrim()
+                    : gsmModel.Comms.Wlan[0].SplitAndTrim(",")[0].SplitAndTrim("/").ToListTrim()
             };
         }
 
         private static Features EnrichFeatures(GsmArenaModel gsmModel)
         {
-            KeyValuePair<bool, string> finger = default;
+            var finger = new Spec<bool>
+            {
+                Value = false,
+                Name = new List<string>()
+            };
             var gps = false;
             var nfc = false;
             var radio = false;
@@ -113,42 +159,42 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
             if (gsmModel.Features?.Sensors != null)
             {
-                finger = new KeyValuePair<bool, string>(false, "");
-                foreach (var sensor in gsmModel.Features.Sensors[0].SplitAndTrim(','))
+                foreach (var sensor in gsmModel.Features.Sensors[0].SplitAndTrim("),"))
                 {
-                    var hasFinger = sensor.Contains("Fingerprint", StringComparison.CurrentCultureIgnoreCase);
+                    var hasFinger = sensor.Contains("fingerprint", StringComparison.CurrentCultureIgnoreCase);
                     if (hasFinger)
                     {
-                        finger = new KeyValuePair<bool, string>(true, sensor);
+                        finger.Value = true;
+                        finger.Name.Add($"{sensor})");
                     }
                 }
             }
 
             if (gsmModel.Comms?.Gps != null)
             {
-                gps = !gsmModel.Comms.Gps[0].Contains("no", StringComparison.CurrentCultureIgnoreCase);
+                gps = !gsmModel.Comms.Gps[0].ToLower().Contains("no", StringComparison.CurrentCultureIgnoreCase);
             }
             if (gsmModel.Comms?.Nfc != null)
             {
-                nfc = !gsmModel.Comms.Nfc[0].Contains("no", StringComparison.CurrentCultureIgnoreCase);
+                nfc = !gsmModel.Comms.Nfc[0].ToLower().Contains("no", StringComparison.CurrentCultureIgnoreCase);
             }
             if (gsmModel.Comms?.Radio != null)
             {
-                nfc = !gsmModel.Comms.Radio[0].Contains("no", StringComparison.CurrentCultureIgnoreCase);
+                nfc = !gsmModel.Comms.Radio[0].ToLower().Contains("no", StringComparison.CurrentCultureIgnoreCase);
             }
             if (gsmModel.Sound?.The35MmJack != null)
             {
-                jack = !gsmModel.Sound.The35MmJack[0].Contains("no", StringComparison.CurrentCultureIgnoreCase);
+                jack = !gsmModel.Sound.The35MmJack[0].ToLower().Contains("no", StringComparison.CurrentCultureIgnoreCase);
             }
             if (gsmModel.MainCamera?.Video != null)
             {
-                gyro = gsmModel.MainCamera.Video[0].Contains("gyro", StringComparison.CurrentCultureIgnoreCase);
+                gyro = gsmModel.MainCamera.Video[0].ToLower().Contains("gyro", StringComparison.CurrentCultureIgnoreCase);
             }
             if (gsmModel.Battery?.Charging != null)
             {
-                foreach (var charging in gsmModel.Battery.Charging.ToList())
+                foreach (var charging in gsmModel.Battery.Charging.ToListTrim())
                 {
-                    if (charging.Contains("Fast", StringComparison.CurrentCultureIgnoreCase))
+                    if (charging.Contains("fast", StringComparison.CurrentCultureIgnoreCase))
                     {
                         fastCharging = true;
                     }
@@ -156,7 +202,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             }
             if (gsmModel.Body.Orphans != null)
             {
-                foreach (var orphans in gsmModel.Body.Orphans)
+                foreach (var orphans in gsmModel.Body.Orphans.ToListTrim())
                 {
                     if (orphans.Contains("water"))
                     {
@@ -187,28 +233,35 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         {
             var prices = new Dictionary<string, double>();
 
-            var pricesList = gsmModel.Misc.Price?[0].SplitAndTrim('/').ToListTrim();
+            var pricesList = gsmModel.Misc.Price?[0].SplitAndTrim("/").ToListTrim();
 
             if (pricesList != null)
             {
                 foreach (var price in pricesList)
                 {
-                    if (price.Contains("About"))
+                    if (price.Contains("about", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        if (price.Contains("USD"))
+                        if (price.Contains("usd", StringComparison.InvariantCultureIgnoreCase))
                         {
-                            prices.Add("USD", double.Parse(Regex.Match(price.RemoveWhitespace(), @"(\d+[.,]?\d*)(?=(USD))").Value));
+                            prices.Add(
+                                "USD", double.Parse(Regex.Match(price.RemoveWhitespace(), @"(\d+[.,]?\d*)(?=(usd))").Value)
+                            );
                         }
-                        if (price.Contains("EUR"))
+                        if (price.Contains("eur", StringComparison.InvariantCultureIgnoreCase))
                         {
-                            prices.Add("EUR", double.Parse(Regex.Match(price.RemoveWhitespace(), @"(\d+[.,]?\d*)(?=(EUR))").Value));
+                            prices.Add(
+                                "EUR", double.Parse(Regex.Match(price.RemoveWhitespace(), @"(\d+[.,]?\d*)(?=(eur))").Value)
+                            );
                         }
                     }
                     else
                     {
                         var valueResult = Regex.Match(price.RemoveWhitespace(), @"[\W](?=[1-9])").Value;
-                        var name = ((ConvertPrice)valueResult.ToCharArray()[0]).ToString();
-                        prices.Add(name, double.Parse(Regex.Match(price, @"(\d+[.,]?\d*)").Value));
+                        var name = ((ConvertPrice)valueResult.ToUpper().ToCharArray()[0]).ToString();
+
+                        prices.Add(
+                            name.ToUpper(), double.Parse(Regex.Match(price, @"(\d+[.,]?\d*)").Value)
+                        );
                     }
                 }
             }
@@ -228,10 +281,10 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         {
             if (gsmModel.Charging != null)
             {
-                var batteryCharger = gsmModel.Charging.Where(x => x.Contains("Fast charging", StringComparison.CurrentCultureIgnoreCase)).ToArray();
-                var wirelessCharger = gsmModel.Charging.Where(x => x.Contains("wireless charging", StringComparison.CurrentCultureIgnoreCase));
+                var batteryCharger = gsmModel.Charging.ToListTrim().Where(x => x.Contains("fast charging", StringComparison.CurrentCultureIgnoreCase)).ToArray();
+                var wirelessCharger = gsmModel.Charging.ToListTrim().Where(x => x.Contains("wireless charging", StringComparison.CurrentCultureIgnoreCase));
 
-                int.TryParse(Regex.Match(gsmModel.Orphans.First().RemoveWhitespace(), @"(?<!(mAh))\d+").Value,
+                int.TryParse(Regex.Match(gsmModel.Orphans.First().RemoveWhitespace(), @"(?<!(mah))\d+").Value,
                     out var capacityResult1);
 
                 var powerResult = 0;
@@ -250,7 +303,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 };
             }
 
-            int.TryParse(Regex.Match(gsmModel.Orphans[0].RemoveWhitespace(), @"(?<!(mAh))\d+").Value, out var capacityResult2);
+            int.TryParse(Regex.Match(gsmModel.Orphans[0].RemoveWhitespace(), @"(?<!(mah))\d+").Value, out var capacityResult2);
             return new Battery
             {
                 Capacity = int.Parse(capacityResult2.ToString()),
@@ -264,11 +317,11 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         {
             var platform = new Platform
             {
-                Chipset = new List<Chipset>(),
-                CPU = new List<CPU>(),
-                GPU = new List<GPU>(),
-                Os = new Dictionary<string, int>(),
-                Tests = new List<Performance>()
+                Chipset = new Dictionary<string, List<Chipset>>(),
+                Cpu = new Dictionary<string, List<Cpu>>(),
+                Gpu = new Dictionary<string, List<Gpu>>(),
+                Os = new Os(),
+                Tests = new Dictionary<string, double>()
             };
 
             if (gsmModel.Platform is null)
@@ -281,70 +334,114 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 double result = 0;
                 if (chipset.Contains("nm"))
                 {
-                    double.TryParse(chipset.SplitAndTrim('(')[1].Split("nm")[0], out result);
+                    double.TryParse(chipset.SplitAndTrim("(")[1].Split("nm")[0], out result);
                 }
 
-                int.TryParse(chipset.SplitAndTrim('(')[0].SplitAndTrim(' ')[^1], out var generationResult);
-                platform.Chipset.Add(new Chipset
+                int generationResult = 0;
+                if (chipset.Contains("dragon"))
                 {
-                    Generation = generationResult,
-                    Name = chipset.SplitAndTrim('(')[0],
-                    Size = result,
-                    Type = chipset.SplitAndTrim('-')[^1]
-                });
+                    int.TryParse(chipset.SplitAndTrim("(")[0].SplitAndTrim(" ")[^1], out generationResult);
+                }
+                else if (chipset.Contains("mediatek"))
+                {
+                    int.TryParse(Regex.Match(chipset, @"(?<=(MT))[0-9]*").Value, out generationResult);
+                }
+                else
+                {
+                    int.TryParse(chipset.SplitAndTrim(" ")[1], out generationResult);
+                }
+
+                var type = chipset.SplitAndTrim(")").Last().Contains(" - ") ? chipset.SplitAndTrim("-")[^1] : "global";
+
+                if (platform.Chipset.ContainsKey(type))
+                {
+                    platform.Chipset[type].Add(new Chipset
+                    {
+                        Generation = generationResult,
+                        Name = chipset.SplitAndTrim("(")[0],
+                        Size = result
+                    });
+                }
+                else
+                {
+                    platform.Chipset.Add(type, new List<Chipset>()
+                    {
+                        new Chipset
+                        {
+                            Generation = generationResult,
+                            Name = chipset.SplitAndTrim("(")[0],
+                            Size = result
+                        }
+                    });
+                }
             }
 
             foreach (var gpu in gsmModel.Platform.Gpu.ToListTrim())
-            {;
-                int.TryParse(gpu.SplitAndTrim('-')[0].SplitAndTrim(' ')[^1], out var generationResult);
-                platform.GPU.Add(new GPU()
+            {
+                int.TryParse(gpu.SplitAndTrim("-")[0].SplitAndTrim(" ")[^1], out var generationResult);
+                var type = gpu.SplitAndTrim(")").Last().Contains(" - ") ? gpu.SplitAndTrim("-")[^1] : "global";
+
+                if (platform.Gpu.ContainsKey(type))
                 {
-                    Generation = generationResult,
-                    Name = gpu.SplitAndTrim('-')[0],
-                    Type = gpu.SplitAndTrim('-')[^1]
-                });
+                    platform.Gpu[type].Add(new Gpu
+                    {
+                        Generation = generationResult,
+                        Name = gpu.SplitAndTrim("-")[0],
+                    });
+                }
+                else
+                {
+                    platform.Gpu.Add(type, new List<Gpu>()
+                    {
+                        new Gpu
+                        {
+                            Generation = generationResult,
+                            Name = gpu.SplitAndTrim("-")[0],
+                        }
+                    });
+                }
             }
 
             foreach (var cpu in gsmModel.Platform.Cpu.ToListTrim())
             {
-                Enum.TryParse(string.Join("", cpu.ToLower().SplitAndTrim(' ')[0].SplitAndTrim('-')), out Cores result);
+                Enum.TryParse(string.Join("", cpu.ToLower().SplitAndTrim(" ")[0].SplitAndTrim("-")), out Cores result);
 
                 var cpuTypes = new List<CpuType>();
 
                 if (cpu.Contains("("))
                 {
-                    foreach (var cpuType in Regex.Match(cpu, @"(?<=\()(.*)(?=\))").Value.SplitAndTrim('&'))
+                    foreach (var cpuType in Regex.Match(cpu, @"(?<=\()(.*)(?=\))").Value.SplitAndTrim("&"))
                     {
-                        int.TryParse(cpuType.SplitAndTrim('x')[0], out var countResult);
+                        int.TryParse(cpuType.SplitAndTrim("x")[0], out var countResult);
 
                         double ghzResult;
-                        if (cpu.SplitAndTrim(' ').Length > 1)
+                        if (cpu.SplitAndTrim(" ").Length > 1)
                         {
-                            double.TryParse(cpuType.SplitAndTrim('x')[1].SplitAndTrim(' ')[0], out ghzResult);
+                            double.TryParse(cpuType.SplitAndTrim("x")[1].SplitAndTrim(" ")[0], out ghzResult);
                         }
                         else
                         {
-                            double.TryParse(cpuType.SplitAndTrim('x')[0].SplitAndTrim(' ')[0], out ghzResult);
+                            double.TryParse(cpuType.SplitAndTrim("x")[0].SplitAndTrim(" ")[0], out ghzResult);
                         }
 
                         cpuTypes.Add(new CpuType
                         {
                             Count = int.Parse(countResult.ToString()),
                             Ghz = double.Parse(ghzResult.ToString(CultureInfo.InvariantCulture)),
-                            Name = cpuType.Split("Hz")[^1].Trim()
+                            Name = cpuType.Split("hz")[^1].Trim()
                         });
                     }
                 }
                 else
                 {
                     double ghzResult;
-                    if (cpu.SplitAndTrim(' ').Length > 1)
+                    if (cpu.SplitAndTrim(" ").Length > 1)
                     {
-                        double.TryParse(cpu.SplitAndTrim(' ')[1], out ghzResult);
+                        double.TryParse(cpu.SplitAndTrim(" ")[1], out ghzResult);
                     }
                     else
                     {
-                        double.TryParse(cpu.SplitAndTrim(' ')[0], out ghzResult);
+                        double.TryParse(cpu.SplitAndTrim(" ")[0], out ghzResult);
                     }
 
                     cpuTypes.Add(new CpuType
@@ -355,21 +452,42 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                     });
                 }
 
-                platform.CPU.Add(new CPU()
+                var type = cpu.SplitAndTrim(")").Last().Contains(" - ") ? cpu.SplitAndTrim("-")[^1] : "global";
+
+                if (platform.Cpu.ContainsKey(type))
                 {
-                    Cores = (int)result,
-                    CpuList = cpuTypes,
-                    Type = cpu.SplitAndTrim('-')[^1]
-                });
+                    platform.Cpu[type].Add(new Cpu
+                    {
+                        Cores = (int)result,
+                        CpuList = cpuTypes,
+                    });
+                }
+                else
+                {
+                    platform.Cpu.Add(type, new List<Cpu>()
+                    {
+                        new Cpu
+                        {
+                            Cores = (int)result,
+                            CpuList = cpuTypes,
+                        }
+                    });
+                }
             }
 
             if (gsmModel.Platform.Os != null)
             {
-                foreach (var os in gsmModel.Platform.Os[0].SplitAndTrim(','))
+                int.TryParse(Regex.Match(gsmModel.Platform.Os.First().SplitAndTrim(",").First(), @"\d+").Value, out var osResult);
+                if (gsmModel.Platform.Os.First().Contains(","))
                 {
-                    int.TryParse(Regex.Match(os, @"\d+").Value, out var osResult);
-                    platform.Os.Add(string.Join(' ', os.SplitAndTrim(' ').SkipLast(1)).Trim(), int.Parse(osResult.ToString()));
+                    platform.Os.Interface = gsmModel.Platform.Os.First().Split(",")[1].ToLower();
                 }
+                else
+                { 
+                    platform.Os.Interface = gsmModel.Platform.Os.First().Trim().ToLower();
+                }
+                platform.Os.Version = osResult;
+                platform.Os.System = gsmModel.Platform.Os.First().SplitAndTrim(" ").First();
             }
 
             if (gsmModel.Tests != null)
@@ -378,24 +496,34 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 {
                     double.TryParse(perf.Split(":").ToListTrim()[1].Split(" ")[0].Replace("fps", ""),
                         out var scoreResult);
-                    platform.Tests.Add(new Performance
-                    {
-                        Score = double.Parse(scoreResult.ToString(CultureInfo.InvariantCulture)),
-                        Type = perf.SplitAndTrim(':')[0].Replace("\n", "").ToLower()
-                    });
+
+                    var type = perf.SplitAndTrim(":")[0].Replace("\n", "").ToLower();
+                    platform.Tests.Add(type, double.Parse(scoreResult.ToString(CultureInfo.InvariantCulture)));
                 }
             }
 
             return platform;
         }
 
-        private static Dictionary<string, List<string>> EnrichNetworkBands(NetworkJson gsmNetwork)
+        private static BandSpec EnrichNetworkBands(NetworkJson gsmNetwork)
         {
-            var networks = new Dictionary<string, List<string>>();
+            var networks = new BandSpec()
+            {
+                Bands = new List<BandType>(),
+                TotalBands = 0
+            };
 
             foreach (var (key, value) in gsmNetwork.Bands)
             {
-                networks.Add(key, value[0].SplitAndTrim('/')[0].Split(",").ToListTrim());
+                var listOfValues = value[0].SplitAndTrim("/")[0].Split(",").ToListTrim();
+
+                networks.TotalBands += listOfValues.Count;
+                networks.Bands.Add(new BandType
+                {
+                    Type = key,
+                    Count = listOfValues.Count,
+                    Values = listOfValues
+                });
             }
 
             return networks;
@@ -408,7 +536,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             KeyValuePair<int, string> waterResistent;
             if (!string.IsNullOrWhiteSpace(water))
             {
-                int.TryParse(water.Split(" ")[0].Split("IP")[^1], out var waterResult);
+                int.TryParse(water.SplitAndTrim(" ")[0].Split("ip")[^1], out var waterResult);
                 waterResistent = new KeyValuePair<int, string>(int.Parse(waterResult.ToString()), water.ToLower());
             }
             else
@@ -422,7 +550,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 In = new Dictionary<string, double>()
             };
 
-            var dim = gsmModel.Body.Dimensions[0].SplitAndTrim(' ').ToListTrim();
+            var dim = gsmModel.Body.Dimensions[0].SplitAndTrim(" ").ToListTrim();
             var cm = 0;
             foreach (var x in dim)
             {
@@ -459,13 +587,13 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 }
             }
 
-            double.TryParse(gsmModel.Body.Weight[0].SplitAndTrim('g')[0].SplitAndTrim('k')[0], out var weightResult);
+            double.TryParse(gsmModel.Body.Weight[0].SplitAndTrim("g")[0].SplitAndTrim("k")[0], out var weightResult);
 
             var bodyWeight = gsmModel.Body.Weight.Contains("-") ? 0 : double.Parse(weightResult.ToString(CultureInfo.InvariantCulture));
 
             return new Body
             {
-                Build = gsmModel.Body.Build is null ? new List<string>() : gsmModel.Body.Build[0].SplitAndTrim(',').ToListTrim(),
+                Build = gsmModel.Body.Build is null ? new List<string>() : gsmModel.Body.Build[0].SplitAndTrim(",").ToListTrim(),
                 Sim = gsmModel.Body.Sim[0].ToLower(),
                 WaterResistant = waterResistent,
                 Weight = bodyWeight,
@@ -475,11 +603,15 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
         private Display EnrichDisplay(DisplayJson gsmModelDisplay)
         {
-            int.TryParse(gsmModelDisplay.Protection?[0]?.SplitAndTrim(' ')[^1], out var protectionResult);
-            var protection = new KeyValuePair<string, int>(gsmModelDisplay.Protection?[0], protectionResult);
+            int.TryParse(gsmModelDisplay.Protection?[0]?.SplitAndTrim(" ")[^1], out var protectionResult);
+            var protection = new Spec<int>()
+            {
+                Name = (gsmModelDisplay.Protection ?? Array.Empty<string>()).ToListTrim(),
+                Value = protectionResult
+            };
 
             List<string> refreshList = null;
-            var refreshRates = new List<string>();
+            var refreshRates = new List<int>();
 
 
             if (gsmModelDisplay.Orphans != null)
@@ -489,14 +621,14 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
             if (refreshList != null)
             {
-                refreshRates.AddRange(refreshList.Select(refresh => refresh.Split("Hz")[0]).ToList());
+                refreshRates.AddRange(refreshList.Select(refresh => int.Parse(refresh.Split("hz")[0])).ToList());
             }
 
-            int.TryParse(gsmModelDisplay.Resolution[0].SplitAndTrim('~')[^1].Split("ppi")[0],
+            int.TryParse(gsmModelDisplay.Resolution[0].SplitAndTrim("~")[^1].Split("ppi")[0],
                 out var densityResult);
-            int.TryParse(gsmModelDisplay.Resolution[0]?.SplitAndTrim('x')[0],
+            int.TryParse(gsmModelDisplay.Resolution[0]?.SplitAndTrim("x")[0],
                 out var heightResult);
-            int.TryParse(Array.ConvertAll(gsmModelDisplay.Resolution[0]?.SplitAndTrim('x') ?? Array.Empty<string>(), p => p.Trim())[1].SplitAndTrim(' ')[0],
+            int.TryParse(Array.ConvertAll(gsmModelDisplay.Resolution[0]?.SplitAndTrim("x") ?? Array.Empty<string>(), p => p.Trim())[1].SplitAndTrim(" ")[0],
                 out var weightResult);
             var resolution = new Resolution
             {
@@ -506,8 +638,11 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 Ratio = Regex.Match(gsmModelDisplay.Resolution[0] ?? string.Empty, @"\d+\:\d+").Value
             };
 
-            var type = new KeyValuePair<string, string>(gsmModelDisplay.Type[0]?.SplitAndTrim(',')[0],
-                gsmModelDisplay.Type[0]?.SplitAndTrim(',')[^1].SplitAndTrim(' ').ToListTrim()[0]);
+            var type = new Spec<string>()
+            {
+                Name = gsmModelDisplay.Type[0]?.SplitAndTrim(",").ToListTrim(),
+                Value = gsmModelDisplay.Type[0]?.SplitAndTrim(",")[^1].SplitAndTrim(" ")[0]
+            };
 
             var bodyRatio = gsmModelDisplay.Size.FirstOrDefault(x => x.Contains("ratio"));
             double ratioDensity = 0;
@@ -516,7 +651,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 double.TryParse(Regex.Match(bodyRatio, @"\d+\.?\d*").Value, out ratioDensity);
             }
 
-            var sizes = gsmModelDisplay.Size.ToListTrim()[0]?.SplitAndTrim(',').ToListTrim();
+            var sizes = gsmModelDisplay.Size.ToListTrim()[0]?.SplitAndTrim(",").ToListTrim();
             double.TryParse(Regex.Match(sizes.FirstOrDefault(x => x.Contains("in")) ?? string.Empty, @"\d+(\.?)\d*").Value,
                 out var inSize);
             double.TryParse(Regex.Match(sizes.FirstOrDefault(x => x.Contains("cm")) ?? string.Empty, @"\d+(\.?)\d*").Value,
@@ -548,11 +683,11 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
             foreach (var intern in gsmModelMemory.Internal[0].Split(",").ToListTrim())
             {
-                int.TryParse(intern.Split("GB RAM")[0].SplitAndTrim(' ')[^1], out var ramResult);
-                int.TryParse(intern.Split("GB")[0], out var sizeResult);
+                int.TryParse(intern.Split("gb ram")[0].SplitAndTrim(" ")[^1], out var ramResult);
+                int.TryParse(intern.Split("gb")[0], out var sizeResult);
                 internalLists.Add(new InternalMemory
                 {
-                    RAM = int.Parse(ramResult.ToString()),
+                    Ram = int.Parse(ramResult.ToString()),
                     Size = int.Parse(sizeResult.ToString())
                 });
             }
@@ -560,8 +695,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             return new Memory
             {
                 CardSlot = true,
-                Internals = internalLists,
-                Type = ""
+                Internals = internalLists
             };
         }
 
@@ -572,22 +706,26 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 return new Camera();
             }
 
-            var mainVideos = new Dictionary<int, List<string>>();
-            var mainVideoLists = gsmModel.MainCamera?.Video?[0]?.SplitAndTrim(',').Where(x => x.Contains("@")).Select(x => x.RemoveWhitespace());
+            var mainVideos = new List<Spec<int>>();
+            var mainVideoLists = gsmModel.MainCamera?.Video?[0]?.SplitAndTrim(",").Where(x => x.Contains("@")).Select(x => x.RemoveWhitespace());
 
             if (mainVideoLists != null)
             {
                 foreach (var video in mainVideoLists)
                 {
-                    int.TryParse(video.SplitAndTrim('p')[0].SplitAndTrim('K')[0], out var keyResult);
-                    var key = int.Parse(keyResult.ToString());
-                    if (mainVideos.ContainsKey(key))
+                    int.TryParse(video.SplitAndTrim("p")[0].SplitAndTrim("k")[0], out var keyResult);
+                    var value = int.Parse(keyResult.ToString());
+                    if (mainVideos.Any(s => s.Value.Equals(value)))
                     {
-                        mainVideos[key].Add(video);
+                        mainVideos.First(s => s.Value.Equals(value)).Name.Add(video);
                     }
                     else
                     {
-                        mainVideos.Add(key, new List<string> { video });
+                        mainVideos.Add(new Spec<int>
+                        {
+                            Name = new List<string> { video },
+                            Value = value
+                        });
                     }
                 }
             }
@@ -597,17 +735,17 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             foreach (var mainCamera in mainCameraLists)
             {
                 var zoom = new Dictionary<double,string>();
-                var zoomOptions = mainCamera.SplitAndTrim(',').Where(x => x.Contains("zoom")).Select(x => x.TrimStart());
+                var zoomOptions = mainCamera.SplitAndTrim(",").Where(x => x.Contains("zoom")).Select(x => x.TrimStart());
                 foreach (var zoomOption in zoomOptions)
                 {
-                    double.TryParse(zoomOption.SplitAndTrim('x')[0], out var zoomResult);
+                    double.TryParse(zoomOption.SplitAndTrim("x")[0], out var zoomResult);
                     zoom.Add(double.Parse(zoomResult.ToString(CultureInfo.InvariantCulture)), zoomOption);
                 }
 
-                var micro = Regex.Match(mainCamera.SplitAndTrim(',').FirstOrDefault(x => x.Contains("µm")) ?? "0.0µm",
+                var micro = Regex.Match(mainCamera.SplitAndTrim(",").FirstOrDefault(x => x.Contains("µm")) ?? "0.0µm",
                     @"(\d+\.\d*)(?=(µm))").Value;
                 var size = Regex.Match(mainCamera.RemoveWhitespace(), @"(\d+(\.?)\d*)(?=(mm))").Value;
-                var mp = Regex.Match(mainCamera.RemoveWhitespace(), @"\d+(\.?)\d*(?=(MP))").Value;
+                var mp = Regex.Match(mainCamera.RemoveWhitespace(), @"\d+(\.?)\d*(?=(mp))").Value;
                 var aparture = Regex.Match(mainCamera, @"(?<=(f\/))\d+(\.?)\d*").Value;
 
                 double.TryParse(aparture, out var apartureResult);
@@ -624,22 +762,26 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
                 });
             }
 
-            var selfieVideos = new Dictionary<int, List<string>>();
-            var selfieVideoLists = gsmModel.SelfieCamera?.Video?[0]?.SplitAndTrim(',').Where(x => x.Contains("@")).Select(x => x.RemoveWhitespace());
+            var selfieVideos = new List<Spec<int>>();
+            var selfieVideoLists = gsmModel.SelfieCamera?.Video?[0]?.SplitAndTrim(",").Where(x => x.Contains("@")).Select(x => x.RemoveWhitespace());
 
             if (selfieVideoLists != null)
             {
                 foreach (var video in selfieVideoLists)
                 {
-                    int.TryParse(video.SplitAndTrim('p')[0].SplitAndTrim('K')[0], out var keyResult);
-                    var key = int.Parse(keyResult.ToString());
-                    if (selfieVideos.ContainsKey(key))
+                    int.TryParse(video.SplitAndTrim("p")[0].SplitAndTrim("k")[0], out var keyResult);
+                    var value = int.Parse(keyResult.ToString());
+                    if (selfieVideos.Any(s => s.Value.Equals(value)))
                     {
-                        selfieVideos[key].Add(video);
+                        selfieVideos.First(s => s.Value.Equals(value)).Name.Add(video);
                     }
                     else
                     {
-                        selfieVideos.Add(key, new List<string> { video });
+                        selfieVideos.Add(new Spec<int>
+                        {
+                            Name = new List<string> { video },
+                            Value = value
+                        });
                     }
                 }
             }
@@ -649,16 +791,16 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             foreach (var selfieCamera in selfieCameraLists)
             {
                 var zoom = new Dictionary<double, string>();
-                var zoomOptions = selfieCamera.SplitAndTrim(',').Where(x => x.Contains("zoom")).Select(x => x.TrimStart());
+                var zoomOptions = selfieCamera.SplitAndTrim(",").Where(x => x.Contains("zoom")).Select(x => x.TrimStart());
                 foreach (var zoomOption in zoomOptions)
                 {
-                    double.TryParse(zoomOption.SplitAndTrim('x')[0], out var zoomResult);
+                    double.TryParse(zoomOption.SplitAndTrim("x")[0], out var zoomResult);
                     zoom.Add(double.Parse(zoomResult.ToString(CultureInfo.InvariantCulture)), zoomOption);
                 }
-                var micro = Regex.Match(selfieCamera.SplitAndTrim(',').FirstOrDefault(x => x.Contains("µm")) ?? "0.0µm",
+                var micro = Regex.Match(selfieCamera.SplitAndTrim(",").FirstOrDefault(x => x.Contains("µm")) ?? "0.0µm",
                     @"(\d+\.\d*)(?=(µm))").Value;
                 var size = Regex.Match(selfieCamera.RemoveWhitespace(), @"(\d+(\.?)\d*)(?=(mm))").Value;
-                var mp = Regex.Match(selfieCamera.RemoveWhitespace(), @"\d+(\.?)\d*(?=(MP))").Value;
+                var mp = Regex.Match(selfieCamera.RemoveWhitespace(), @"\d+(\.?)\d*(?=(mp))").Value;
                 var aparture = Regex.Match(selfieCamera, @"(?<=(f\/))\d+(\.?)\d*").Value;
 
 
@@ -679,13 +821,13 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
             var mainFeatures = new List<string>();
             if (gsmModel.MainCamera?.Features != null)
             {
-                mainFeatures.AddRange(gsmModel.MainCamera.Features[0].SplitAndTrim(',').ToListTrim());
+                mainFeatures.AddRange(gsmModel.MainCamera.Features[0].SplitAndTrim(",").ToListTrim());
             }
 
             var selfieFeatures = new List<string>();
             if (gsmModel.SelfieCamera?.Features != null)
             {
-                selfieFeatures.AddRange(gsmModel.SelfieCamera.Features[0].SplitAndTrim(',').ToListTrim());
+                selfieFeatures.AddRange(gsmModel.SelfieCamera.Features[0].SplitAndTrim(",").ToListTrim());
             }
 
             var mainCamerasNo = gsmModel.MainCamera?.Cameras?.Length ?? 0;
@@ -711,6 +853,12 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         }
     }
 
+    public class DataLink
+    {
+        public Uri Image { get; set; }
+        public Uri Link { get; set; }
+    }
+
     public class ImageData
     {
         public List<byte[]> Images { get; set; }
@@ -728,6 +876,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
     public class Status
     {
         public string Announced { get; set; }
+        public int Year { get; set; }
         public string Launch { get; set; }
     }
 
@@ -739,9 +888,31 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
     public class Network
     {
-        public List<string> Technology { get; set; }
+        public TechSpec Technology { get; set; }
         public List<string> Speed { get; set; }
-        public Dictionary<string, List<string>> Bands { get; set; }
+        public BandSpec Band { get; set; }
+    }
+
+    public class TechSpec
+    {
+        public int TotalTechs { get; set; }
+
+        public List<string> Techs { get; set; }
+    }
+
+    public class BandSpec
+    {
+        public int TotalBands { get; set; }
+
+        public List<BandType> Bands { get; set; }
+
+    }
+
+    public class BandType
+    {
+        public string Type { get; set; }
+        public int Count { get; set; }
+        public List<string> Values { get; set; }
     }
 
     public class Body
@@ -761,30 +932,29 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
     public class Platform
     {
-        public Dictionary<string, int> Os { get; set; }
-        public List<Chipset> Chipset { get; set; }
-        public List<CPU> CPU { get; set; }
-        public List<GPU> GPU { get; set; }
-        public List<Performance> Tests { get; set; }
+        public Os Os { get; set; }
+        public Dictionary<string, List<Chipset>> Chipset { get; set; }
+        public Dictionary<string, List<Cpu>> Cpu { get; set; }
+        public Dictionary<string, List<Gpu>> Gpu { get; set; }
+        public Dictionary<string, double> Tests { get; set; }
     }
 
-    public class Performance
+    public class Os
     {
-        public string Type { get; set; }
-        public double Score { get; set; }
+        public string System { get; set; }
+        public int Version { get; set; }
+        public string Interface { get; set; }
     }
 
     public class Chipset
     {
-        public string Type { get; set; }
         public string Name { get; set; }
         public int Generation { get; set; }
         public double Size { get; set; }
     }
 
-    public class CPU
+    public class Cpu
     {
-        public string Type { get; set; }
         public int Cores { get; set; }
         public List<CpuType> CpuList { get; set; }
     }
@@ -796,17 +966,14 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         public string Name { get; set; }
     }
 
-    public class GPU
+    public class Gpu
     {
-        public string Type { get; set; }
         public string Name { get; set; }
         public int Generation { get; set; }
     }
 
     public class Memory
     {
-        public string Type { get; set; }
-
         public List<InternalMemory> Internals { get; set; }
         public bool CardSlot { get; set; }
     }
@@ -814,16 +981,16 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
     public class InternalMemory
     {
         public int Size { get; set; }
-        public int RAM { get; set; }
+        public int Ram { get; set; }
     }
 
     public class Display
     {
-        public List<string> RefreshRate { get; set; }
+        public List<int> RefreshRate { get; set; }
         public Size Size { get; set; }
         public Resolution Resolution { get; set; }
-        public KeyValuePair<string, int> Protection { get; set; }
-        public KeyValuePair<string, string> Type { get; set; }
+        public Spec<int> Protection { get; set; }
+        public Spec<string> Type { get; set; }
     }
 
     public class Size
@@ -852,7 +1019,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         public int Number { get; set; }
         public List<LensCamera> Lens { get; set; }
         public List<string> Features { get; set; }
-        public Dictionary<int, List<string>> Videos { get; set; }
+        public List<Spec<int>> Videos { get; set; }
     }
 
     public class SelfieCamera
@@ -860,7 +1027,19 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         public int Number { get; set; }
         public List<LensCamera> Lens { get; set; }
         public List<string> Features { get; set; }
-        public Dictionary<int, List<string>> Videos { get; set; }
+        public List<Spec<int>> Videos { get; set; }
+    }
+
+    public class Spec<T>
+    {
+        public T Value { get; set; }
+        public List<string> Name { get; set; }
+    }
+
+    public class PriceSpec<T>
+    {
+        public T Value { get; set; }
+        public string Type { get; set; }
     }
 
     public class LensCamera
@@ -882,7 +1061,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
 
     public class Comms
     {
-        public List<string> GPS { get; set; }
+        public List<string> Gps { get; set; }
         public double Bluetooth { get; set; }
         public List<string> Wifi { get; set; }
         public KeyValuePair<string, double> Usb { get; set; }
@@ -898,7 +1077,7 @@ namespace Clerk.Processes.WebExtractorToJson.Model.MobilePhone
         public bool Nfc { get; set; }
         public bool Gps { get; set; }
         public bool Gyro { get; set; }
-        public KeyValuePair<bool, string> Fingerprint { get; set; }
+        public Spec<bool> Fingerprint { get; set; }
     }
 
     public class Battery

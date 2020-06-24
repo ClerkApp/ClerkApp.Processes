@@ -8,7 +8,7 @@ namespace Clerk.Processes.WebExtractorToJson
 {
     public static class Commons
     {
-        public static string[] SplitAndTrim(this string str, char separator)
+        public static string[] SplitAndTrim(this string str, string separator)
         {
             var list = str.Split(separator);
             return list.Select(s => s.Trim().ToLower()).ToArray();
